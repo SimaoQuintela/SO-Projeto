@@ -1,0 +1,4 @@
+nop 3
+bdecompress 4
+bcompress 4
+encrypt 2
