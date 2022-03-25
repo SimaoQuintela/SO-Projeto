@@ -20,7 +20,21 @@ void write_on_config_file(config_file config[], int N){
 	close(fd);
 }
 
+void add(config_file config[], int i,char* key, int value){
+	config[i].key = key;
+	config[i].value = value;
+}
+
 void fill_the_array(config_file config[]){
+	add(config, 0, "nop", 3);
+	add(config, 1, "bcompress", 4);
+	add(config, 2, "bdecompress", 4);
+	add(config, 3, "gcompress", 2);
+	add(config, 4, "gdecompress", 2);
+	add(config, 5, "encrypt", 2);
+	add(config, 6, "decrypt", 2);
+
+	/*
 	config[0].key = "nop";
 	config[0].value = 3;
 
@@ -40,7 +54,8 @@ void fill_the_array(config_file config[]){
 	config[5].value = 2;
 
 	config[6].key = "decrypt";
-	config[6].value = 2;	
+	config[6].value = 2;
+	*/	
 
 }
 
