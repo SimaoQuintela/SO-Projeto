@@ -20,43 +20,20 @@ void write_on_config_file(config_file config[], int N){
 	close(fd);
 }
 
-void add(config_file config[], int i,char* key, int value){
+void add_to_struct(config_file config[], int i,char* key, int value){
 	config[i].key = key;
 	config[i].value = value;
 }
 
 void fill_the_array(config_file config[]){
-	add(config, 0, "nop", 3);
-	add(config, 1, "bcompress", 4);
-	add(config, 2, "bdecompress", 4);
-	add(config, 3, "gcompress", 2);
-	add(config, 4, "gdecompress", 2);
-	add(config, 5, "encrypt", 2);
-	add(config, 6, "decrypt", 2);
 
-	/*
-	config[0].key = "nop";
-	config[0].value = 3;
-
-	config[1].key = "bcompress";
-	config[1].value = 4;
-
-	config[2].key = "bdecompress";
-	config[2].value = 4;
-
-	config[3].key = "gcompress";
-	config[3].value = 2;
-
-	config[4].key = "gdecompress";
-	config[4].value = 2;
-
-	config[5].key = "encrypt";
-	config[5].value = 2;
-
-	config[6].key = "decrypt";
-	config[6].value = 2;
-	*/	
-
+	add_to_struct(config, 0, "nop", 3);
+	add_to_struct(config, 1, "bcompress", 4);
+	add_to_struct(config, 2, "bdecompress", 4);
+	add_to_struct(config, 3, "gcompress", 2);
+	add_to_struct(config, 4, "gdecompress", 2);
+	add_to_struct(config, 5, "encrypt", 2);
+	add_to_struct(config, 6, "decrypt", 2);
 }
 
 
@@ -70,10 +47,6 @@ int main(int argc, char *argv[]){
 
     // write on the config file the server exec functions
     write_on_config_file(config, 7);
-    
-	
-
-
 
 	return 0;
 }
