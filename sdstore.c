@@ -3,50 +3,77 @@
 #include <unistd.h> /* chamadas ao sistema: defs e decls essenciais */
 #include <fcntl.h> /* O_RDONLY, O_WRONLY, O_CREAT, O_* */
 #include <string.h>
-#include  "sdstore.h"
 #define MAX_BUFF 1024
 
 
-void write_on_config_file(config_file config[], int N){
-	int fd = open("config_file.txt", O_CREAT | O_WRONLY, 0666);
+void write_on_config_file(char* args[], int num_args){
+	int fd = open("config_file.txt", O_CREAT | O_TRUNC | O_WRONLY, 0666);
+	char* transformation;
+	int process_limit;
 	char buffer[MAX_BUFF];
 	int size;
 
-	for(int i=0; i<N; i+=1){
-		size = snprintf(buffer, MAX_BUFF, "%s %d\n", config[i].key, config[i].value);
+	for(int i=4; i<num_args; i+=1){
+		// process_limit = 3 -> nop
+		if(!strcmp(args[i], "nop")){
+			process_limit = 3;
+	    
+	    // process_limit = 4 -> bcompress, bdecompress
+		} else if (!strcmp(args[i], "bcompress") || !strcmp(args[i], "bdecompress")) {
+			process_limit = 4;
+		
+		// process_limit = 2 -> gcompress, gdecompress, encrypt, decrypt 
+		} else {
+			process_limit = 2;
+		}
+		
+
+
+		transformation = args[i];
+		size = snprintf(buffer, MAX_BUFF, "%s %d\n", transformation, process_limit);
 		write(fd, buffer, size);
+		
 	}
 
 	close(fd);
 }
 
-void add_to_struct(config_file config[], int i,char* key, int value){
-	config[i].key = key;
-	config[i].value = value;
-}
 
-void fill_the_array(config_file config[]){
+void parse_args(char *args[], int num_args){
+	char buffer[MAX_BUFF];
 
-	add_to_struct(config, 0, "nop", 3);
-	add_to_struct(config, 1, "bcompress", 4);
-	add_to_struct(config, 2, "bdecompress", 4);
-	add_to_struct(config, 3, "gcompress", 2);
-	add_to_struct(config, 4, "gdecompress", 2);
-	add_to_struct(config, 5, "encrypt", 2);
-	add_to_struct(config, 6, "decrypt", 2);
+	// info about client sintax 
+	if(num_args == 1){
+		int size = snprintf(buffer, MAX_BUFF, "./sdstore status\n./sdstore proc-file <priority> input-filename output-filename transformation-id1 transformation-id2 ...\n");
+		write(1, buffer, size);
+	// info about process status
+	} else if(num_args == 2) {
+		write(1, "descobrir como se faz isto", sizeof("descobrir como se faz isto"));
+	} else {
+		char* path_to_process_file;
+		char* path_to_output_folder;
+
+		path_to_process_file = args[2];
+		path_to_output_folder = args[3];
+
+		write_on_config_file(args, num_args);
+		printf("%s\n", path_to_process_file);
+		printf("%s\n", path_to_output_folder);
+	}
+
+
+
 }
 
 
 
 int main(int argc, char *argv[]){
 	char buffer[128];
-	config_file config[7];
 	
-	// fill the array with data
-	fill_the_array(config);
+	parse_args(argv, argc);	
 
-    // write on the config file the server exec functions
-    write_on_config_file(config, 7);
+	
+	
 
 	return 0;
 }
