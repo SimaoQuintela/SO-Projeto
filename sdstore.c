@@ -13,7 +13,7 @@ void write_on_config_file(char* args[], int num_args){
 	char buffer[MAX_BUFF];
 	int size;
 
-	for(int i=4; i<num_args; i+=1){
+	for(int i=1 ; i<num_args; i+=1){
 		// process_limit = 3 -> nop
 		if(!strcmp(args[i], "nop")){
 			process_limit = 3;
@@ -23,7 +23,7 @@ void write_on_config_file(char* args[], int num_args){
 			process_limit = 4;
 		
 		// process_limit = 2 -> gcompress, gdecompress, encrypt, decrypt 
-		} else {
+		} else if(!strcmp(args[i], "gcompress") || !strcmp(args[i], "gdecompress") || !strcmp(args[i], "encrypt") || !strcmp(args[i], "decrypt")) {
 			process_limit = 2;
 		}
 		
@@ -48,7 +48,7 @@ void parse_args(char *args[], int num_args){
 		write(1, buffer, size);
 	// info about process status
 	} else if(num_args == 2) {
-		write(1, "descobrir como se faz isto", sizeof("descobrir como se faz isto"));
+		write(1, "descobrir como se faz isto\n", sizeof("descobrir como se faz isto"));
 	} else {
 		char* path_to_process_file;
 		char* path_to_output_folder;
@@ -57,22 +57,48 @@ void parse_args(char *args[], int num_args){
 		path_to_output_folder = args[3];
 
 		write_on_config_file(args, num_args);
-		printf("%s\n", path_to_process_file);
-		printf("%s\n", path_to_output_folder);
+	//	printf("%s\n", path_to_process_file);
+	//	printf("%s\n", path_to_output_folder);
 	}
 
 
 
 }
 
+int tamanho( char* arg){
+	int i=0;
 
+	while(arg[i] != '\0')
+		i+=1;
+
+
+	return i;
+}
 
 int main(int argc, char *argv[]){
-	char buffer[128];
+	char buffer[MAX_BUFF];
 	
 	parse_args(argv, argc);	
 
-	
+	int wr;
+	if( (wr = open("fifo", O_WRONLY)) == -1){
+		perror("Erro ao abrir o pipe em modo escrita\n");
+		return 1;
+	}
+	printf("abertura do pipe em modo escrita com sucesso\n");
+
+	int i;
+	ssize_t size;
+	for(i = 0; i < argc-1; i+=1){
+		size = tamanho(argv[i]);
+		write(wr, argv[i], size);
+		write(wr, " ", 1);
+		printf("%s size: %ld\n", argv[i], size);
+	}
+	size = tamanho(argv[i]);
+	write(wr, argv[i], size);
+	printf("%s size: %ld\n", argv[i], size);
+
 	
 
 	return 0;
