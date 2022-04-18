@@ -5,7 +5,7 @@
 #include <string.h>
 #define MAX_BUFF 1024
 
-
+/*
 void write_on_config_file(char* args[], int num_args){
 	int fd = open("config_file.txt", O_CREAT | O_TRUNC | O_WRONLY, 0666);
 	char* transformation;
@@ -37,7 +37,7 @@ void write_on_config_file(char* args[], int num_args){
 
 	close(fd);
 }
-
+*/
 
 void parse_args(char *args[], int num_args){
 	char buffer[MAX_BUFF];
@@ -56,7 +56,7 @@ void parse_args(char *args[], int num_args){
 		path_to_process_file = args[2];
 		path_to_output_folder = args[3];
 
-		write_on_config_file(args, num_args);
+	//	write_on_config_file(args, num_args);
 	//	printf("%s\n", path_to_process_file);
 	//	printf("%s\n", path_to_output_folder);
 	}
@@ -65,41 +65,28 @@ void parse_args(char *args[], int num_args){
 
 }
 
-int tamanho( char* arg){
-	int i=0;
-
-	while(arg[i] != '\0')
-		i+=1;
-
-
-	return i;
-}
-
 int main(int argc, char *argv[]){
-	char buffer[MAX_BUFF];
-	
 	parse_args(argv, argc);	
 
-	int wr;
-	if( (wr = open("fifo", O_WRONLY)) == -1){
-		perror("Erro ao abrir o pipe em modo escrita\n");
+	int wr = open("main_pipe", O_WRONLY, 0666);
+	if(wr == -1){
+		perror("Erro ao abrir o main_pipe");
 		return 1;
 	}
-	printf("abertura do pipe em modo escrita com sucesso\n");
+	printf("Abertura do pipe de escrita com sucesso\n");
 
-	int i;
-	ssize_t size;
-	for(i = 0; i < argc-1; i+=1){
-		size = tamanho(argv[i]);
-		write(wr, argv[i], size);
+
+	int i=0;
+	for(i=0; i<argc-1; i+=1){
+		write(wr, argv[i], strlen(argv[i]));
 		write(wr, " ", 1);
-		printf("%s size: %ld\n", argv[i], size);
 	}
-	size = tamanho(argv[i]);
-	write(wr, argv[i], size);
-	printf("%s size: %ld\n", argv[i], size);
+	write(wr, argv[i], strlen(argv[i]));
+    write(wr, "\n", 1);
+	write(wr, "\0", 1);
 
-	
+
+
 
 	return 0;
 }
