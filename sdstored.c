@@ -36,10 +36,11 @@ int main(int argc, char *argv[]){
 		}
 
 		int i = 0;
-		while(read(rd, buffer + i, 1) > 0){
+		while(read(rd, buffer+i, 1) > 0){
 			i+=1;
 		}
 
+		/*
 		i=0;
 		printf("aqui");
 		// seg fault
@@ -53,10 +54,9 @@ int main(int argc, char *argv[]){
 		for(i=0; i<10; i+=1){
 			printf("%s\n", exec_args[i]);
 		}
+		*/
 
-
-
-		printf("%s", buffer);
+		printf("%s\n", buffer);
 	//	printf("Mete outra linha men\n");
 	}
 

@@ -65,6 +65,7 @@ void parse_args(char *args[], int num_args){
 
 }
 
+
 int main(int argc, char *argv[]){
 	parse_args(argv, argc);	
 
@@ -82,8 +83,9 @@ int main(int argc, char *argv[]){
 		write(wr, " ", 1);
 	}
 	write(wr, argv[i], strlen(argv[i]));
-    write(wr, "\n", 1);
+//    write(wr, "\n", 1);
 	write(wr, "\0", 1);
+	close(wr);
 
 
 
