@@ -47,13 +47,13 @@ int main(int argc, char *argv[]){
 
 	 	token = strtok(buffer, " ");
         
-        while(token != NULL){
-            exec_args[j] = token;
-        	token = strtok(NULL, " ");
-        	j++;
-        }
+                while(token != NULL){
+                   exec_args[j] = token;
+        	   token = strtok(NULL, " ");
+        	   j++;
+                }
 
-        exec_args[j] = "end";
+                exec_args[j] = "end";
 
 		
 		for(i=0; exec_args[i] !=  "end"; i+=1){
