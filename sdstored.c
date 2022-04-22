@@ -28,7 +28,7 @@ int main(int argc, char *argv[]){
 
 	printf("pipe criado com sucesso\n");
 
-	// se dois clientes mandarem o pedido ao mesmo tempo
+	/// se dois clientes mandarem o pedido ao mesmo tempo
 	// só por sorte é que funciona
 	while(1){
 		j = 0;
