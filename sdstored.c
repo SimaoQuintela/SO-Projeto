@@ -12,17 +12,55 @@
  * Dicionário com as transformações
  */
 typedef struct config_file {
-	char* transformation;
-	int max_exec_trans;
+	char* transformation;			// transformação
+	int current_num_transf;  		// número de transformações a correr 
+	int max_exec_transf;			// número máximo de transformações que podem correr
 } config_file;
 
+void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
+	char buffer[MAX_BUFF];
+	int i = 0;
+	int line = 0;
 
-void transformations(char* exec_args[], int num_args){
+	int fd = open(path_to_conf_file, O_RDONLY, 0666);
+	if(fd == -1){
+		perror("Erro ao abrir o ficheiro de configuração");
+	}
+
+	while(read(fd, buffer+i, 1)){
+		if( buffer[i] == ' '){
+			buffer[i] = '\0'; 
+			printf("%s\n", buffer);
+			conf_file[line].transformation = (char *)malloc(sizeof(i));
+			strcpy(conf_file[line].transformation,buffer);
+			i = 0;
+		} else if(buffer[i] == '\n'){
+			buffer[i] = '\0';
+			printf("%s\n", buffer);
+			conf_file[line].max_exec_transf = atoi(buffer);
+			conf_file[line].current_num_transf = 0;
+			i = 0;
+			line+=1;
+		} else {
+			i+=1;
+		}
+
+	}
+
+	for(int i = 0; i<7; i+=1){
+		printf("\nTransformation: %s\nCurrent_num_transf: %d\nMax_exec_transf: %d\n", conf_file[i].transformation, conf_file[i].current_num_transf, conf_file[i].max_exec_transf);
+	}
+
+
+
+}
+
+
+void transformations(char* exec_args[], int num_args, char* path_transf_folder){
 	char *transformations[num_args-4];
 	for(int i=0; i<(num_args-4); i+=1){
 		transformations[i] = exec_args[i+4];
-		//strcpy(transformations[i], exec_args[num_args-4]);
-		printf("%s\n", transformations[i]);
+	//	printf("%s\n", transformations[i]);
 	}
 
 	/*
@@ -31,19 +69,21 @@ void transformations(char* exec_args[], int num_args){
 	*/
 }
 
-// !!!  lembrar-me de ler o config file e meter no dicionário
 int main(int argc, char *argv[]){
+
+	// dá informação de como se deve arrancar o server caso este seja inicializado incorretamente
+	if(argc != 3){
+		write(1, "./sdstored config-filename transformations-folder\n", sizeof("./sdstored config-filename transformations-folder\n"));
+		return 1;
+	}
+
 	char buffer[MAX_BUFF];
 	char* token;
 	char *exec_args[15];
 	int i, j;
-	
-	/* dá informação de como se deve arrancar o server caso este seja inicializado incorretamente
-	if(argc != 3){
-		write(1, "./sdstored config-filename transformations-folder\n", sizeof("./sdstored config-filename transformations-folder\n"));
-		return 1;
-	}*/
-	
+	config_file conf_file[7];
+
+	fill_struct_conf_file(conf_file, argv[1]);
 
 	// abertura do pipe que faz a ligação cliente-servidor
 	if(mkfifo("main_pipe", 0666) == -1){
@@ -53,8 +93,6 @@ int main(int argc, char *argv[]){
 
 	printf("pipe criado com sucesso\n");
 
-	/// se dois clientes mandarem o pedido ao mesmo tempo
-	// só por sorte é que funciona
 	while(1){
 		j = 0;
 		i = 0;
@@ -82,7 +120,7 @@ int main(int argc, char *argv[]){
         if(num_args == 2){
         	// status()
         } else {
-        	transformations(exec_args, num_args);
+        	transformations(exec_args, num_args, argv[2]);
         }
 
 		/*
