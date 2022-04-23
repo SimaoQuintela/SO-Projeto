@@ -29,6 +29,7 @@ int main(int argc, char *argv[]){
 	// se dois clientes mandarem o pedido ao mesmo tempo
 	// só por sorte é que funciona
 	while(1){
+
 		int rd = open("main_pipe", O_RDONLY, 0666);
 		if(rd == -1){
 			perror("Erro ao abrir o pipe de leitura");
@@ -50,6 +51,7 @@ int main(int argc, char *argv[]){
 			arg = strtok(NULL, " ");
 			i+=1;
 		}
+		printf("passei por aqui");
 
 		for(i=0; i<10; i+=1){
 			printf("%s\n", exec_args[i]);
