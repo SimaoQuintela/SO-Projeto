@@ -9,7 +9,7 @@
 #define MAX_BUFF 1024
 
 /**
- * Dicionário com as transformações
+ * Estrutura com as transformações e informação sobre as mesmas
  */
 typedef struct config_file {
 	char* transformation;			// transformação
