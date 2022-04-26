@@ -9,6 +9,13 @@
 int main(int argc, char *argv[]){
 	char buffer[MAX_BUFF];
 
+	printf("Pid: %d\n", getpid());
+	sleep(5);
+
+	/**
+	 * Fazer pipe de pids para passar o pid do processo
+	*/
+
 	if(argc == 1){
 		int size = snprintf(buffer, MAX_BUFF, "./sdstore status\n./sdstore proc-file <priority> input-filename output-filename transformation-id1 transformation-id2 ...\n");
 		write(1, buffer, size);

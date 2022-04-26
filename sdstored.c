@@ -17,6 +17,49 @@ typedef struct config_file {
 	int max_exec_transf;			// número máximo de transformações que podem correr
 } config_file;
 
+/**
+ * Lista ligada que representa as tasks que estão a correr de momento
+ */
+typedef struct tasks_running {
+	int task_num;
+	char* line;
+	struct tasks_running *prox_task;
+} *tasks_running;
+
+
+/*
+void add_task_to_linked_list(tasks_running *tasks, int running_tasks, char* input[]){
+	tasks_running nova;
+	nova = malloc(sizeof(struct tasks_running));
+	nova->line;
+	for(int i=0; input; i+=1){
+		nova->line[i] = input[i];
+	}
+	nova->task_num = running_tasks;
+	nova->prox_task = NULL;
+
+	while(*tasks != NULL && (*tasks)->task_num < running_tasks){
+		tasks = &((*tasks)->prox_task);
+	}
+	nova->prox_task = *tasks;
+	*tasks = nova;
+
+}
+*/
+
+/*
+void print_linked_list(tasks_running *tasks){
+	tasks_running temp = *tasks;
+	while(temp != NULL){
+		for(int i = 0; i<MAX_BUFF; i+=1){
+			printf("%s\n", temp->line[i]);
+		}
+		printf("%d\n", temp->task_num);
+		temp = temp->prox_task;
+	}
+}
+*/
+
 void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 	char buffer[MAX_BUFF];
 	int i = 0;
@@ -50,9 +93,6 @@ void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 	for(int i = 0; i<7; i+=1){
 		printf("\nTransformation: %s\nCurrent_num_transf: %d\nMax_exec_transf: %d\n", conf_file[i].transformation, conf_file[i].current_num_transf, conf_file[i].max_exec_transf);
 	}
-
-
-
 }
 
 
@@ -79,9 +119,12 @@ int main(int argc, char *argv[]){
 
 	char buffer[MAX_BUFF];
 	char* token;
-	char *exec_args[15];
+	char *exec_args[MAX_BUFF];
 	int i, j;
 	config_file conf_file[7];
+
+//	int running_tasks = 0;
+
 
 	fill_struct_conf_file(conf_file, argv[1]);
 
@@ -106,6 +149,10 @@ int main(int argc, char *argv[]){
 			i+=1;
 		}
 
+		/**
+		 * Fazer pipe de pids para passar o pid do processo
+		 */
+
 	 	token = strtok(buffer, " ");
         
         while(token != NULL){
@@ -116,19 +163,23 @@ int main(int argc, char *argv[]){
 
         exec_args[j] = "\0";
         int num_args = j;
+    //    running_tasks += 1;
 
         if(num_args == 2){
-        	// status()
+    //    	add_task_to_linked_list(tasks, running_tasks, exec_args);
+    //    	print_linked_list(tasks);
+        //	status(tasks);
         } else {
         	transformations(exec_args, num_args, argv[2]);
         }
+    //    running_tasks -= 1;
 
-		/*
+		
 		for(i=0; exec_args[i] !=  "\0"; i+=1){
 			printf("%s\n", exec_args[i]);
 		}
-		*/
 		
+	
 	
 	}
 
