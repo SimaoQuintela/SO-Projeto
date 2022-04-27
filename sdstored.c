@@ -21,20 +21,35 @@ typedef struct config_file {
  * Lista ligada que representa as tasks que estão a correr de momento
  */
 typedef struct tasks_running {
-	int task_num;
-	char* line;
+	int task_num;					// número da task
+	char line[MAX_BUFF];			// descrição da task	
+	int in_process;					// 0 -> por processar 1-> em processamento
 	struct tasks_running *prox_task;
 } *tasks_running;
 
 
-/*
-void add_task_to_linked_list(tasks_running *tasks, int running_tasks, char* input[]){
+/**
+ * tou a confiar que tá bem definida, testar quando tiver a concorrência a funcionar
+ */ 
+void remove_task(tasks_running *l, int num){
+    
+    for (; *l && (*l)->task_num < num; l = &(*l)->prox_task);
+    
+    if (*l && (*l)->task_num == num) {
+        tasks_running temp = *l;
+        *l = (*l)->prox_task;
+        free(temp);
+    }
+    
+}
+
+/**
+ * falta adicionar o in_process
+*/
+void add_task(tasks_running *tasks, int running_tasks, char input[]){
 	tasks_running nova;
 	nova = malloc(sizeof(struct tasks_running));
-	nova->line;
-	for(int i=0; input; i+=1){
-		nova->line[i] = input[i];
-	}
+	strcpy(nova->line, input);
 	nova->task_num = running_tasks;
 	nova->prox_task = NULL;
 
@@ -45,20 +60,16 @@ void add_task_to_linked_list(tasks_running *tasks, int running_tasks, char* inpu
 	*tasks = nova;
 
 }
-*/
 
-/*
 void print_linked_list(tasks_running *tasks){
 	tasks_running temp = *tasks;
 	while(temp != NULL){
-		for(int i = 0; i<MAX_BUFF; i+=1){
-			printf("%s\n", temp->line[i]);
-		}
+		printf("%s\n", temp->line);
 		printf("%d\n", temp->task_num);
 		temp = temp->prox_task;
 	}
 }
-*/
+
 
 void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 	char buffer[MAX_BUFF];
@@ -73,13 +84,13 @@ void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 	while(read(fd, buffer+i, 1)){
 		if( buffer[i] == ' '){
 			buffer[i] = '\0'; 
-			printf("%s\n", buffer);
+		//	printf("%s\n", buffer);
 			conf_file[line].transformation = (char *)malloc(sizeof(i));
 			strcpy(conf_file[line].transformation,buffer);
 			i = 0;
 		} else if(buffer[i] == '\n'){
 			buffer[i] = '\0';
-			printf("%s\n", buffer);
+		//	printf("%s\n", buffer);
 			conf_file[line].max_exec_transf = atoi(buffer);
 			conf_file[line].current_num_transf = 0;
 			i = 0;
@@ -90,9 +101,11 @@ void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 
 	}
 
+	/* print à struct com os valores lidos no config file
 	for(int i = 0; i<7; i+=1){
 		printf("\nTransformation: %s\nCurrent_num_transf: %d\nMax_exec_transf: %d\n", conf_file[i].transformation, conf_file[i].current_num_transf, conf_file[i].max_exec_transf);
 	}
+	*/
 }
 
 
@@ -123,7 +136,8 @@ int main(int argc, char *argv[]){
 	int i, j;
 	config_file conf_file[7];
 
-//	int running_tasks = 0;
+	int running_tasks = 0;
+	tasks_running tasks;
 
 
 	fill_struct_conf_file(conf_file, argv[1]);
@@ -148,13 +162,18 @@ int main(int argc, char *argv[]){
 		while(read(rd, buffer+i, 1) > 0){  
 			i+=1;
 		}
+        running_tasks += 1;
 
-		/**
-		 * Fazer pipe de pids para passar o pid do processo
-		 */
+        //if(strlen(buffer) % 2 == 0){
+        //	sleep(5);
+        //} 
+
+		if(strcmp(buffer, "./sdstore status") != 0){
+			add_task(&tasks, running_tasks, buffer);
+		}
+        printf("buffer: %s\n", buffer);
 
 	 	token = strtok(buffer, " ");
-        
         while(token != NULL){
             exec_args[j] = token;
         	token = strtok(NULL, " ");
@@ -163,24 +182,15 @@ int main(int argc, char *argv[]){
 
         exec_args[j] = "\0";
         int num_args = j;
-    //    running_tasks += 1;
 
-        if(num_args == 2){
-    //    	add_task_to_linked_list(tasks, running_tasks, exec_args);
-    //    	print_linked_list(tasks);
-        //	status(tasks);
+        printf("running tasks: %d\n", running_tasks);
+        if(j == 2){
+        	print_linked_list(&tasks);
+    //		status(tasks);
         } else {
         	transformations(exec_args, num_args, argv[2]);
         }
-    //    running_tasks -= 1;
-
-		
-		for(i=0; exec_args[i] !=  "\0"; i+=1){
-			printf("%s\n", exec_args[i]);
-		}
-		
-	
-	
+        running_tasks -= 1;        
 	}
 
 	unlink("main_pipe");
