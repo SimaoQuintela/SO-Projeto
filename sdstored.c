@@ -122,6 +122,7 @@ void transformations(char* exec_args[], int num_args, char* path_transf_folder){
 	*/
 }
 
+Já tou oficialmente a bater mal com isto  
 int main(int argc, char *argv[]){
 
 	// dá informação de como se deve arrancar o server caso este seja inicializado incorretamente
