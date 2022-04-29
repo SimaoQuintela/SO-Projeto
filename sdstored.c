@@ -122,7 +122,6 @@ void transformations(char* exec_args[], int num_args, char* path_transf_folder){
 	*/
 }
 
-Já tou oficialmente a bater mal com isto
 int main(int argc, char *argv[]){
 
 	// dá informação de como se deve arrancar o server caso este seja inicializado incorretamente
@@ -163,35 +162,38 @@ int main(int argc, char *argv[]){
 		while(read(rd, buffer+i, 1) > 0){  
 			i+=1;
 		}
-        running_tasks += 1;
+		if(fork() == 0){
+        	running_tasks += 1;
 
-        //if(strlen(buffer) % 2 == 0){
-        //	sleep(5);
-        //} 
+        	if(strlen(buffer) % 2 == 0){
+        		sleep(5);
+        	} 
 
-		if(strcmp(buffer, "./sdstore status") != 0){
-			add_task(&tasks, running_tasks, buffer);
-		}
-        printf("buffer: %s\n", buffer);
+			if(strcmp(buffer, "./sdstore status") != 0){
+				add_task(&tasks, running_tasks, buffer);
+			}
+        	printf("buffer: %s\n", buffer);
 
-	 	token = strtok(buffer, " ");
-        while(token != NULL){
-            exec_args[j] = token;
-        	token = strtok(NULL, " ");
-        	j++;
-        }
+	 		token = strtok(buffer, " ");
+        	while(token != NULL){
+        	    exec_args[j] = token;
+        		token = strtok(NULL, " ");
+        		j++;
+        	}
 
-        exec_args[j] = "\0";
-        int num_args = j;
+        	exec_args[j] = "\0";
+        	int num_args = j;
 
-        printf("running tasks: %d\n", running_tasks);
-        if(j == 2){
+        	printf("running tasks: %d\n", running_tasks);
+        	if(j == 2){
         	print_linked_list(&tasks);
-    //		status(tasks);
-        } else {
-        	transformations(exec_args, num_args, argv[2]);
-        }
-        running_tasks -= 1;        
+    	//		status(tasks);
+        	} else {
+        		transformations(exec_args, num_args, argv[2]);
+        	}
+        	running_tasks -= 1;   
+        	_exit(-1);  
+        }   
 	}
 
 	unlink("main_pipe");
