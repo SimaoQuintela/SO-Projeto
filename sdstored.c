@@ -122,7 +122,34 @@ void transformations(char* exec_args[], int num_args, char* path_transf_folder){
 	*/
 }
 
+int getIndice(char* transf){   //funçao auxiliar que apenas nos da o indice de ocorrencia da transformaçao no conf_file[]
+	int r;
+
+	if(strcmp(transf, "nop") == 0) r = 0;
+	else if(strcmp(transf, "bcompress") == 0) r = 1;
+	else if(strcmp(transf, "bdecompress") == 0) r = 2;
+	else if(strcmp(transf, "gcompress") == 0) r = 3;
+	else if(strcmp(transf, "gdecompress") == 0) r = 4;
+	else if(strcmp(transf, "encrypt") == 0) r = 5;
+	else if(strcmp(transf, "decrypt") == 0) r = 6;
+        else r=-1;
+
+        return r;
+
+}
+
 int available(config_file conf_file[], char* exec_args[], int num_args){
+           
+           int i, ind;
+           int r=1; //assumo que há espaço
+
+	   for(i=4; i<(num_args); i++){        //ciclo começa em i=4 pois as transformaçoes apenas começam no indice 4 (descartando a palha do ./sdstore procfile in out)
+	       	  ind = getIndice(exec_args[i]);
+	       	  if(conf_file[ind].current_num_transf >= conf_file[ind].max_exec_transf) r=0; //numero maximo atingido, na comparaçao bastaria ==, apenas meti >= porque why not
+      
+	   }
+
+	   return r;
 
 }
 
