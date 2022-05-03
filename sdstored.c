@@ -210,16 +210,17 @@ int main(int argc, char *argv[]){
         }
         exec_args[j] = "\0";
         int num_args = j;
-        
+        /*
         while(available(conf_file, exec_args, num_args) != 0){
         	//	printf("Não posso executar\n");
 
         }
+        */
 
 		if(fork() == 0){
-        	if(strlen(buffer_aux) % 2 == 0){
-        		sleep(5);
-        	}	 
+        	//if(strlen(buffer_aux) % 2 == 0){
+        	//	sleep(5);
+        	//}	 
         	printf("%s\n", buffer_aux);
         //	printf("running tasks: %d\n", running_tasks);
         	if(j == 2){
