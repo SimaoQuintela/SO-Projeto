@@ -141,6 +141,30 @@ int getIndice(char* transf){   //funçao auxiliar que apenas nos da o indice de 
 int available(config_file conf_file[], char* exec_args[], int num_args){
            
            int i, ind;
+	   int r=1;
+	   int arr[7] = {0,0,0,0,0,0,0};   //array onde estará guardado, no respetivo indice da transformaçao, o numero de transformaçoes a executar
+
+	   for(i=4; i<(num_args); i++){        //ciclo começa em i=4 pois as transformaçoes apenas começam no indice 4 (descartando a palha do ./sdstore procfile in out)
+	       	  ind = getIndice(exec_args[i]);
+	       	  arr[ind]++;  
+      
+	   }
+	
+	
+	   for(i=0; i<7; i++){
+		   if((conf_file[i].current_num_tranf + arr[i]) > conf_file[i].max_exec_transf) {
+			   r = 0; //se os que estao a correr mais os que queremos correr for maior que o maximo, retorna 0
+			   break;
+		   }
+	   }
+
+	   return r;     
+
+}
+	/*
+int available(config_file conf_file[], char* exec_args[], int num_args){
+           
+           int i, ind;
            int r=1; //assumo que há espaço
 
 	   for(i=4; i<(num_args); i++){        //ciclo começa em i=4 pois as transformaçoes apenas começam no indice 4 (descartando a palha do ./sdstore procfile in out)
@@ -152,7 +176,8 @@ int available(config_file conf_file[], char* exec_args[], int num_args){
 	   return r;
 
 }
-
+*/
+	
 int main(int argc, char *argv[]){
 
 	// dá informação de como se deve arrancar o server caso este seja inicializado incorretamente
