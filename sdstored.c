@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 #include <unistd.h> /* chamadas ao sistema: defs e decls essenciais */
 #include <fcntl.h> /* O_RDONLY, O_WRONLY, O_CREAT, O_* */
@@ -51,6 +52,7 @@ void add_task(tasks_running *tasks, int running_tasks, char input[]){
 	nova = malloc(sizeof(struct tasks_running));
 	strcpy(nova->line, input);
 	nova->task_num = running_tasks;
+	nova->in_process = 0;
 	nova->prox_task = NULL;
 
 	while(*tasks != NULL && (*tasks)->task_num < running_tasks){
@@ -66,6 +68,7 @@ void print_linked_list(tasks_running *tasks){
 	while(temp != NULL){
 		printf("%s\n", temp->line);
 		printf("%d\n", temp->task_num);
+		printf("%d\n", temp->in_process);
 		temp = temp->prox_task;
 	}
 }
@@ -140,43 +143,42 @@ int getIndice(char* transf){   //funçao auxiliar que apenas nos da o indice de 
 
 int available(config_file conf_file[], char* exec_args[], int num_args){
            
-           int i, ind;
-	   int r=1;
-	   int arr[7] = {0,0,0,0,0,0,0};   //array onde estará guardado, no respetivo indice da transformaçao, o numero de transformaçoes a executar
+    int i, ind;
+	int r=1;
+	int arr[7] = {0,0,0,0,0,0,0};   //array onde estará guardado, no respetivo indice da transformaçao, o numero de transformaçoes a executar
 
-	   for(i=4; i<(num_args); i++){        //ciclo começa em i=4 pois as transformaçoes apenas começam no indice 4 (descartando a palha do ./sdstore procfile in out)
-	       	  ind = getIndice(exec_args[i]);
-	       	  arr[ind]++;  
-      
-	   }
+	for(i=4; i<(num_args); i++){        //ciclo começa em i=4 pois as transformaçoes apenas começam no indice 4 (descartando a palha do ./sdstore procfile in out)
+	    ind = getIndice(exec_args[i]);
+	    arr[ind]++;  
+   
+	}
 	
 	
-	   for(i=0; i<7; i++){
-		   if((conf_file[i].current_num_tranf + arr[i]) > conf_file[i].max_exec_transf) {
-			   r = 0; //se os que estao a correr mais os que queremos correr for maior que o maximo, retorna 0
-			   break;
-		   }
-	   }
+	for(i=0; i<7; i++){   
+		if((conf_file[i].current_num_transf + arr[i]) > conf_file[i].max_exec_transf) {
+			r = 0; //se os que estao a correr mais os que queremos correr for maior que o maximo, retorna 0	
+			break;
+		}
+	}
 
-	   return r;     
+	if(r == 1){
+		for(i=0; i<7; i+=1){
+			conf_file[i].current_num_transf += arr[i];
+		}
+	}
 
-}
-	/*
-int available(config_file conf_file[], char* exec_args[], int num_args){
-           
-           int i, ind;
-           int r=1; //assumo que há espaço
-
-	   for(i=4; i<(num_args); i++){        //ciclo começa em i=4 pois as transformaçoes apenas começam no indice 4 (descartando a palha do ./sdstore procfile in out)
-	       	  ind = getIndice(exec_args[i]);
-	       	  if(conf_file[ind].current_num_transf >= conf_file[ind].max_exec_transf) r=0; //numero maximo atingido, na comparaçao bastaria ==, apenas meti >= porque why not
-      
-	   }
-
-	   return r;
+	return r;     
 
 }
-*/
+
+void process_task(tasks_running *tasks, char buffer[], int status){
+	while(*tasks != NULL && strcmp((*tasks)->line, buffer) != 0){
+		tasks = &((*tasks)->prox_task);
+	}
+	(*tasks)->in_process = status;
+
+}
+
 	
 int main(int argc, char *argv[]){
 
@@ -235,28 +237,40 @@ int main(int argc, char *argv[]){
         }
         exec_args[j] = "\0";
         int num_args = j;
-        /*
-        while(available(conf_file, exec_args, num_args) != 0){
-        	//	printf("Não posso executar\n");
 
+        /*
+        if(signal(SIGCHD, funcao)){
+        	faz coisas
         }
         */
 
-		if(fork() == 0){
-        	//if(strlen(buffer_aux) % 2 == 0){
-        	//	sleep(5);
-        	//}	 
-        	printf("%s\n", buffer_aux);
-        //	printf("running tasks: %d\n", running_tasks);
-        	if(j == 2){
-        		print_linked_list(&tasks);
-    	//		status(tasks);
+
+        if(available(conf_file, exec_args, num_args) == 1){
+        	process_task(&tasks, buffer_aux, 1);
+
+			if(fork() == 0){
+        		printf("%s\n", buffer_aux);
+        	//	sleep(10);
+        	//	printf("running tasks: %d\n", running_tasks);
+        		if(j == 2){
+        			print_linked_list(&tasks);
+    	//			status(tasks);
+        		} else {
+        			transformations(exec_args, num_args, argv[2]);
+        		}
+        		running_tasks -= 1;   
+        	 // kill(getppid(), SIGCHD);  
+        		_exit(-1);  
         	} else {
-        		transformations(exec_args, num_args, argv[2]);
-        	}
-        	running_tasks -= 1;   
-        	_exit(-1);  
-        }   
+        		wait(NULL);
+        	} 
+        } else {
+        	printf("%s\n", buffer_aux);
+        	process_task(&tasks, buffer_aux, 0);
+        }
+       	printf("OLA OLA OLA \n");
+		print_linked_list(&tasks);
+
 	}
 
 	unlink("main_pipe");
