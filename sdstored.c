@@ -8,6 +8,8 @@
 #include <string.h>
 
 #define MAX_BUFF 1024
+#define READ 0
+#define WRITE 1
 
 /**
  * Estrutura com as transformações e informação sobre as mesmas
@@ -23,6 +25,7 @@ typedef struct config_file {
  */
 typedef struct tasks_running {
 	int task_num;					// número da task
+	char pid[10];
 	char line[MAX_BUFF];			// descrição da task	
 	int in_process;					// 0 -> por processar 1-> em processamento
 	struct tasks_running *prox_task;
@@ -47,13 +50,14 @@ void remove_task(tasks_running *l, int num){
 /**
  * falta adicionar o in_process
 */
-void add_task(tasks_running *tasks, int running_tasks, char input[]){
+void add_task(tasks_running *tasks, int running_tasks, char input[], char pid[], int status){
 	tasks_running nova;
 	nova = malloc(sizeof(struct tasks_running));
 	strcpy(nova->line, input);
 	nova->task_num = running_tasks;
-	nova->in_process = 0;
+	nova->in_process = status;
 	nova->prox_task = NULL;
+	strcpy(nova->pid, pid);
 
 	while(*tasks != NULL && (*tasks)->task_num < running_tasks){
 		tasks = &((*tasks)->prox_task);
@@ -66,9 +70,10 @@ void add_task(tasks_running *tasks, int running_tasks, char input[]){
 void print_linked_list(tasks_running *tasks){
 	tasks_running temp = *tasks;
 	while(temp != NULL){
-		printf("%s\n", temp->line);
-		printf("%d\n", temp->task_num);
-		printf("%d\n", temp->in_process);
+		printf("Linha: %s\n", temp->line);
+		printf("Pid: %s\n", temp->pid);
+		printf("Task #%d\n", temp->task_num);
+		printf("Em processamento: %d\n", temp->in_process);
 		temp = temp->prox_task;
 	}
 }
@@ -111,18 +116,88 @@ void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 	*/
 }
 
+char* cria_transf(char* transf, char* path_transf_folder, char* transformations[], int index){
+	int length_path_folder = strlen(path_transf_folder);
+	int length_transf = strlen(transformations[index]);
+	
+	transf = malloc(sizeof(length_path_folder + length_transf + 1));
+//	strcpy(transf, path_transf_folder);
+//	strcpy(transf+length_path_folder, transformations[index]);
+	strcpy(transf, transformations[index]);
 
-void transformations(char* exec_args[], int num_args, char* path_transf_folder){
-	char *transformations[num_args-4];
-	for(int i=0; i<(num_args-4); i+=1){
-		transformations[i] = exec_args[i+4];
+	return transf;
+//	printf("%s\n", transf);
+}
+
+
+void transformations(char* exec_args[], int num_args, char* path_transf_folder, int fixed_args){
+	
+	char *transformations[num_args-fixed_args];
+	int num_transfs = num_args-fixed_args;
+
+	char* input_file = malloc(sizeof(exec_args[fixed_args-2]));
+	strcpy(input_file, exec_args[fixed_args-2]);
+
+	char* output_file = malloc(sizeof(exec_args[fixed_args-1]));
+	strcpy(output_file, exec_args[fixed_args-1]);
+
+	/**
+	 * Coloca no array transformations as transformações a executar
+	 */
+	for(int i=0; i<(num_args-fixed_args); i+=1){
+		transformations[i] = malloc(sizeof(exec_args[i+fixed_args]));
+		strcpy(transformations[i],exec_args[i+fixed_args]);
 	//	printf("%s\n", transformations[i]);
 	}
 
-	/*
-	* Falta executar as transformações
-	* Marcar reunião com o grupo para fazer isto pois é a parte mais "difícil"
-	*/
+	int p[num_transfs-1][2];
+	char *transf;
+
+	for(int i =0; i<num_transfs; i+=1){
+		// transf ----> SDStore-transf/transformação
+		transf = cria_transf(transf, path_transf_folder, transformations, i);
+		printf("%s\n", transf);
+		
+		if(i == 0){
+			pipe(p[i]);
+			if(fork() == 0){
+				close(p[i][READ]);
+				printf("executei no i = %d\n", i);
+				dup2(p[i][WRITE], WRITE);
+				close(p[i][WRITE]);
+				execlp(transf, transf, input_file, output_file,NULL);
+				perror("Algo de errado aconteceu");
+			} else {
+				close(p[i][WRITE]);
+			}
+		} else if (i == num_transfs-1) {
+			if(fork() == 0){
+				printf("executei no i = %d", i);
+				dup2(p[i-1][READ], READ);
+				close(p[i-1][READ]);
+				execlp(transf, transf, input_file, output_file, NULL);
+				perror("Algo de errado aconteceu");
+			} else {
+				close(p[i-1][READ]);
+			}
+		} else {
+			pipe(p[i]);
+			if(fork() == 0){
+				printf("executei no i = %d", i);
+				close(p[i][READ]);
+				dup2(p[i-1][READ], READ);
+				close(p[i-1][READ]);
+				dup2(p[i][WRITE], WRITE);
+				close(p[i][WRITE]);
+				execlp(transf, transf, input_file, output_file, NULL);
+				perror("Algo de errado aconteceu");
+			} else {
+				close(p[i-1][READ]);
+				close(p[i][WRITE]);
+			}
+		}
+		
+	}
 }
 
 int getIndice(char* transf){   //funçao auxiliar que apenas nos da o indice de ocorrencia da transformaçao no conf_file[]
@@ -141,13 +216,13 @@ int getIndice(char* transf){   //funçao auxiliar que apenas nos da o indice de 
 
 }
 
-int available(config_file conf_file[], char* exec_args[], int num_args){
+int available(config_file conf_file[], char* exec_args[], int num_args, int fixed_args){
            
     int i, ind;
 	int r=1;
 	int arr[7] = {0,0,0,0,0,0,0};   //array onde estará guardado, no respetivo indice da transformaçao, o numero de transformaçoes a executar
 
-	for(i=4; i<(num_args); i++){        //ciclo começa em i=4 pois as transformaçoes apenas começam no indice 4 (descartando a palha do ./sdstore procfile in out)
+	for(i=fixed_args; i<(num_args); i++){        //ciclo começa em i=4 pois as transformaçoes apenas começam no indice 4 (descartando a palha do ./sdstore procfile in out)
 	    ind = getIndice(exec_args[i]);
 	    arr[ind]++;  
    
@@ -168,7 +243,6 @@ int available(config_file conf_file[], char* exec_args[], int num_args){
 	}
 
 	return r;     
-
 }
 
 void process_task(tasks_running *tasks, char buffer[], int status){
@@ -191,10 +265,12 @@ int main(int argc, char *argv[]){
 	char buffer[MAX_BUFF];
 	char* token;
 	char *exec_args[MAX_BUFF];
-	int i, j;
+	int i, j, fixed_args;
 	config_file conf_file[7];
+	char pid[10];
+	char buffer_pids[MAX_BUFF];
 
-	int running_tasks = 0;
+	int task_numero = 1;
 	tasks_running tasks;
 
 
@@ -205,30 +281,48 @@ int main(int argc, char *argv[]){
 		perror("Erro ao criar o pipe");
 		return 2;
 	}
-
-	printf("pipe criado com sucesso\n");
-
+	printf("Main pipe criado com sucesso\n");
+/*
+	if(mkfifo("pipe_pids", 0666) == -1){
+		perror("Erro ao criar o pipe");
+		return 1;
+	}
+	printf("Pipe de pids criado com sucesso\n");
+*/
 	while(1){
 		j = 0;
 		i = 0;
+/*
+		int pid_client = open("pipe_pids", O_RDONLY, 0666);
+		if(pid_client == -1){
+			perror("Erro ao abrir o pipe de pids");
+			return 3;
+		}
+
+		while(read(pid_client, buffer_pids+j, 1) > 0){
+			j+=1;
+		}
+		strcpy(pid, buffer_pids);
+		printf("%s\n", buffer_pids);
+		j = 0;
+*/
 		int rd = open("main_pipe", O_RDONLY, 0666);
 		if(rd == -1){
 			perror("Erro ao abrir o pipe de leitura");
-			return 3;
+			return 4;
 		}
 
 		while(read(rd, buffer+i, 1) > 0){  
 			i+=1;
 		}
+		i=0;
+        printf("%s\n\n", buffer);
+    
         int tamanho_input = strlen(buffer);
 		char buffer_aux[tamanho_input];
 		strcpy(buffer_aux, buffer);
 
-        running_tasks += 1;
-		if(strcmp(buffer, "./sdstore status") != 0){
-			add_task(&tasks, running_tasks, buffer);
-		}
-
+	
 	 	token = strtok(buffer, " ");
         while(token != NULL){
             exec_args[j] = token;
@@ -236,40 +330,42 @@ int main(int argc, char *argv[]){
         	j++;
         }
         exec_args[j] = "\0";
+
+        if(strcmp(exec_args[2], "-p") == 0){
+        	fixed_args = 6;
+        } else {
+        	fixed_args = 4;
+        }
+
         int num_args = j;
 
-        /*
-        if(signal(SIGCHD, funcao)){
-        	faz coisas
-        }
-        */
-
-
-        if(available(conf_file, exec_args, num_args) == 1){
-        	process_task(&tasks, buffer_aux, 1);
-
+       
+        if(available(conf_file, exec_args, num_args, fixed_args) == 1){
+			if(strcmp(buffer_aux, "./sdstore status") != 0){
+				add_task(&tasks, task_numero, buffer_aux, pid, 1);
+        		task_numero += 1;
+			}
 			if(fork() == 0){
-        		printf("%s\n", buffer_aux);
-        	//	sleep(10);
-        	//	printf("running tasks: %d\n", running_tasks);
+        		if(task_numero % 2 == 0){
+        	//		sleep(5);
+        		}
         		if(j == 2){
         			print_linked_list(&tasks);
-    	//			status(tasks);
         		} else {
-        			transformations(exec_args, num_args, argv[2]);
+        			transformations(exec_args, num_args, argv[2], fixed_args);
         		}
-        		running_tasks -= 1;   
-        	 // kill(getppid(), SIGCHD);  
+
         		_exit(-1);  
-        	} else {
-        		wait(NULL);
-        	} 
+        	}
+
         } else {
-        	printf("%s\n", buffer_aux);
-        	process_task(&tasks, buffer_aux, 0);
+        	add_task(&tasks, task_numero, buffer_aux, pid, 0);
+        	task_numero += 1;
+
+        //	printf("Em espera: %s\n\n", buffer_aux);
         }
-       	printf("OLA OLA OLA \n");
-		print_linked_list(&tasks);
+
+		//print_linked_list(&tasks);
 
 	}
 
