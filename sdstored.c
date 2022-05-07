@@ -26,8 +26,9 @@ typedef struct config_file {
 typedef struct tasks_running {
 	int task_num;					// número da task
 	char pid[10];
-	char* line[MAX_BUFF];			// descrição da task	
+	char line[MAX_BUFF];			// descrição da task	
 	int in_process;					// 0 -> por processar 1-> em processamento
+	int priority;
 	struct tasks_running *prox_task;
 } *tasks_running;
 
@@ -50,22 +51,19 @@ void remove_task(tasks_running *l, int num){
     
 }
 
-/**
- * falta adicionar o in_process
-*/
-void add_task(tasks_running *tasks, int running_tasks, char* input[], char pid[], int N, int status){
+
+void add_task(tasks_running *tasks, int running_tasks, char input[], int priority, char pid[], int N, int status){
 	tasks_running nova;
 	nova = malloc(sizeof(struct tasks_running));
-	for(int i=0; i<N; i+=1){
-		nova->line[i] = malloc(strlen(input[i]));
-		strcpy(nova->line[i],input[i]);
-	}
+
+	strcpy(nova->line, input);
 	nova->task_num = running_tasks;
+	nova->priority = priority;
 	nova->in_process = status;
 	nova->prox_task = NULL;
 	strcpy(nova->pid, pid);
 
-	while(*tasks != NULL && (*tasks)->task_num < running_tasks){
+	while(*tasks != NULL && (*tasks)->priority > priority){
 		tasks = &((*tasks)->prox_task);
 	}
 	nova->prox_task = *tasks;
@@ -73,16 +71,14 @@ void add_task(tasks_running *tasks, int running_tasks, char* input[], char pid[]
 
 }
 
-void print_linked_list(tasks_running *tasks, int N){
+void print_linked_list(tasks_running *tasks){
 	tasks_running temp = *tasks;
 	while(temp != NULL){
-		printf("Linha: ");
-		for(int i=0; i<N; i+=1){
-			printf("%s ", temp->line[i]);
-		}
-		printf("\nPid: %s\n", temp->pid);
+		printf("Linha: %s\n", temp->line);
+		printf("Pid: %s\n", temp->pid);
 		printf("Task #%d\n", temp->task_num);
-		printf("Em processamento: %d\n", temp->in_process);
+		printf("Prioridade: %d\n", temp->priority);
+		printf("Em processamento: %d\n\n", temp->in_process);
 		temp = temp->prox_task;
 	}
 }
@@ -314,55 +310,69 @@ int main(int argc, char *argv[]){
 		}
 	    buffer[i] = '\0';
 		close(rd);
-    
-
-        int tamanho_input = strlen(buffer);
+   
+        ssize_t total_size = 0;
+		ssize_t size;
 		strcpy(buffer_aux, buffer);
-		printf("linha: %s\n", buffer_aux);
+		
 		int k = 0;
 	 	token = strtok(buffer, " ");
         while(token != NULL){
+        	size = 0;
+        	size += strlen(token) +1;
             exec_args[k] = token;
         	token = strtok(NULL, " ");
         	k++;
+        	total_size += size;
         }
+        total_size -= size;
         exec_args[k] = "\0";
-        char* line[k-1];
-        char *pid;
-        for(i=0; i<k-1; i+=1){
-        	line[i] = malloc(strlen(exec_args[i]));
-        	strcpy(line[i],exec_args[i]);
-        }
-        strcpy(line[k-1], "\0");
-        strcpy(pid,exec_args[k]);
 
-        if(k!=3 && strcmp(line[2], "-p") == 0){
+        char line[MAX_BUFF];
+        size = 0;
+        for(i=0; i<k-2; i+=1){
+        	strcpy(line+size, exec_args[i]);
+        	size += strlen(exec_args[i]);
+        	strcpy(line+size, " ");
+        	size += 1;
+        }
+        strcpy(line+size, exec_args[i]);
+        size += strlen(exec_args[i]);
+
+        strcpy(pid,exec_args[k-1]);
+
+
+        if(k!=3 && strcmp(exec_args[2], "-p") == 0){
         	fixed_args = 6;
         } else {
         	fixed_args = 4;
         }
-        int num_args = k-1;
-        char* line_to_execute[MAX_BUFF];
 
-        if(k!=3){
-        	if(available(conf_file, line, num_args, fixed_args) == 1){
-			    // verificamos caso seja o status
-			   	add_task(&tasks, task_numero, line, pid, num_args, 1);
+        int num_args = k-1;
+        int priority;
+	    
+	    // verificamos, caso seja o status não adicionamos
+        if(num_args!=2){
+        	if(strcmp(exec_args[2], "-p") == 0){
+        		priority = atoi(exec_args[3]);
+        	} else {
+        		priority = 0;
+        	}
+
+        	if(available(conf_file, exec_args, num_args, fixed_args) == 1){
+			   	add_task(&tasks, task_numero, line, priority, pid, num_args, 1);
 		    
         	} else {
-        		add_task(&tasks, task_numero, line, pid, num_args, 0);
+        		add_task(&tasks, task_numero, line, priority, pid, num_args, 0);
         	}
+        	task_numero += 1;
         }
-        task_numero += 1;
-    
-    //    write_line_to_execute(line_to_execute);
-       
+           
 		if(fork() == 0){
-		//	kill(getppid(), SIGUSR1);
         	if(num_args == 2){
-        		print_linked_list(&tasks, k-1);
+        		print_linked_list(&tasks);
         	} else {
-        	//	transformations(line_to_execute, num_args, argv[2], fixed_args);
+        	//	transformations(exec_args, num_args, argv[2], fixed_args);
         	}
         	_exit(-1);  
         }
