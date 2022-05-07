@@ -17,18 +17,15 @@ int main(int argc, char *argv[]){
 		int size = snprintf(buffer, MAX_BUFF, "./sdstore status\n./sdstore proc-file <priority> input-filename output-filename transformation-id1 transformation-id2 ...\n");
 		write(1, buffer, size);
 	} else {
-	/*
-		char pid[10];
-		snprintf(pid,10,"%d\0", getpid());
-		printf("Pid: %d\n", getpid());
 	
+	/*
 		int write_pid = open("pipe_pids", O_WRONLY, 0666);
 		if(write_pid == -1){
 			perror("Erro ao abrir o pipe dos pids");
 			return 2;
 		}
 
-		write(write_pid, pid, 10);
+		write(write_pid, pid, sizeof(pid));
 		close(write_pid);
 	*/
 		int wr = open("main_pipe", O_WRONLY, 0666);
@@ -38,29 +35,30 @@ int main(int argc, char *argv[]){
 		}
 		printf("Abertura do pipe de escrita com sucesso\n");
 
+		char pid[10];
+		snprintf(pid,10," %d\0", getpid());
+		printf("Pid: %s\n", pid);
 
 		int i=0;
-		int tamanho_total=0;
 		int tamanho=0;
 		for(i=0; i<argc-1; i+=1){
 			strcpy(buffer+tamanho, argv[i]);
 			tamanho += strlen(argv[i]);
 			strcpy(buffer+tamanho, " ");
 			tamanho += 1;
-		//	write(wr, argv[i], strlen(argv[i]));
-		//	write(wr, " ", 1);
 		}
-
 		strcpy(buffer+tamanho, argv[i]);
 		tamanho += strlen(argv[i]);
-		strcpy(buffer+tamanho+1, "\0");
-		tamanho +=1;
+		// incluir o pid do processo na passagem de informação 
+		strcpy(buffer+tamanho, pid);		
+		tamanho += sizeof(pid);
+		
 
 
 		//write(wr, argv[i], strlen(argv[i]));
 		//write(wr, "\0", 1);
-		write(wr, buffer, tamanho);
-		printf("Escrevi no pipe\n");
+		int s = write(wr, buffer, tamanho);
+		printf("Escrevi no pipe %d bytes\n", s);
 		close(wr);
 	}
 
