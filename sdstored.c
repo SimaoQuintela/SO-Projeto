@@ -369,9 +369,10 @@ int main(int argc, char *argv[]){
 	}
 	printf("Main pipe criado com sucesso\n");
 
-	//signal(SIGTERM, close_pipe);
+	//signal(SIGTERM, close_pipe);  
 	while(1){
 		i = 0;
+		
 
 		int rd = open("main_pipe", O_RDONLY, 0666);
 		if(rd == -1){

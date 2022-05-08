@@ -69,7 +69,7 @@ int main(int argc, char *argv[]){
 		printf("Escrevi no pipe %d bytes\n", s);
 		close(wr);
 
-		write(1, "Pending...\n", sizeof("Pending...\n"));
+		write(1, "Pending....\n", sizeof("Pending...\n"));
 		if(argc == 2){
 			snprintf(pid,10,"%d\0", getpid());
 			status(buffer, pid);
