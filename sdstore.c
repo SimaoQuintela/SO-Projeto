@@ -8,7 +8,26 @@
 #include <string.h>
 #define MAX_BUFF 1024
 
-char * itoa(int n, char * buffer, int radix);
+void status(char buffer[], char pid[]){
+	int i =0;
+
+	if(mkfifo(pid, 0666) == -1){
+		perror("Erro ao criar o pipe");
+	}
+	printf("Pipe com o pid %s aberto\n", pid);
+
+	int pipe_pid = open(pid, O_RDONLY, 0666);
+
+	while(read(pipe_pid, buffer+i, 1) > 0){
+		i+=1;
+	}
+
+	write(1, buffer, i);
+
+
+	close(pipe_pid);
+	unlink(pid);
+}
 
 int main(int argc, char *argv[]){
 	char buffer[MAX_BUFF];
@@ -17,17 +36,6 @@ int main(int argc, char *argv[]){
 		int size = snprintf(buffer, MAX_BUFF, "./sdstore status\n./sdstore proc-file <priority> input-filename output-filename transformation-id1 transformation-id2 ...\n");
 		write(1, buffer, size);
 	} else {
-	
-	/*
-		int write_pid = open("pipe_pids", O_WRONLY, 0666);
-		if(write_pid == -1){
-			perror("Erro ao abrir o pipe dos pids");
-			return 2;
-		}
-
-		write(write_pid, pid, sizeof(pid));
-		close(write_pid);
-	*/
 		int wr = open("main_pipe", O_WRONLY, 0666);
 		if(wr == -1){
 			perror("Erro ao abrir o main_pipe");
@@ -37,7 +45,7 @@ int main(int argc, char *argv[]){
 
 		char pid[10];
 		snprintf(pid,10," %d\0", getpid());
-		printf("Pid: %s\n", pid);
+		
 
 		int i=0;
 		int tamanho=0;
@@ -60,9 +68,13 @@ int main(int argc, char *argv[]){
 		int s = write(wr, buffer, tamanho);
 		printf("Escrevi no pipe %d bytes\n", s);
 		close(wr);
+
+		if(argc == 2){
+			snprintf(pid,10,"%d\0", getpid());
+			status(buffer, pid);
+		}
+
 	}
-
-
 
 
 	return 0;

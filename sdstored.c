@@ -51,7 +51,6 @@ void remove_task(tasks_running *l, int num){
     
 }
 
-
 void add_task(tasks_running *tasks, int running_tasks, char input[], int priority, char pid[], int N, int status){
 	tasks_running nova;
 	nova = malloc(sizeof(struct tasks_running));
@@ -134,6 +133,7 @@ char* cria_transf(char* transf, char* path_transf_folder, char* transformations[
 }
 
 
+
 void transformations(char* line[], int num_args, char* path_transf_folder, int fixed_args){
 	
 	char *transformations[num_args-fixed_args];
@@ -212,6 +212,47 @@ void transformations(char* line[], int num_args, char* path_transf_folder, int f
 		}
 		
 	}
+}
+
+void status(tasks_running *tasks, char pid[], int running_tasks){
+	// one more buffer hum
+	char buffer[2048];
+
+	printf("Pipe com o pid %s aberto\n", pid);
+	int pipe_pid = open(pid, O_WRONLY, 0666);
+	if(pipe_pid == -1){
+		perror("Erro ao abrir o pipe com o pid\n");
+	}
+
+	// para escrever as tasks por ordem
+	int num_task = 1;
+	int tamanho;
+	for(int i=0; i<running_tasks; i+=1){
+		char line[200];
+		tasks_running temp = *tasks;
+
+		while(temp != NULL && temp->task_num != num_task){
+			temp = (&(*temp))->prox_task;
+		}
+		tamanho = snprintf(line, 200, "task #%d: %s", temp->task_num, temp->line);
+		num_task +=1;
+
+		write(pipe_pid, line, tamanho);
+		write(pipe_pid, "\n", 1);
+		free(temp);		// temos de ser ecológicos meus amigos
+	}
+
+	// escrever as transformações
+	for(int i=0; i<7; i+=1){
+		char line[MAX_BUFF];
+		tamanho = snprintf(line, MAX_BUFF, "transf %s: %d/%d (running/max)", conf_file[i].transformation, conf_file[i].current_num_transf, conf_file[i].max_exec_transf);
+		write(pipe_pid, line, tamanho);
+		write(pipe_pid, "\n", 1);
+	}
+
+
+
+	close(pipe_pid);
 }
 
 int getIndice(char* transf){   //funçao auxiliar que apenas nos da o indice de ocorrencia da transformaçao no conf_file[]
@@ -294,8 +335,6 @@ int main(int argc, char *argv[]){
 	}
 	printf("Main pipe criado com sucesso\n");
 
-	printf("Pipe de pids criado com sucesso\n");
-
 	//signal(SIGTERM, close_pipe);
 	while(1){
 		i = 0;
@@ -311,25 +350,19 @@ int main(int argc, char *argv[]){
 	    buffer[i] = '\0';
 		close(rd);
    
-        ssize_t total_size = 0;
-		ssize_t size;
 		strcpy(buffer_aux, buffer);
 		
 		int k = 0;
 	 	token = strtok(buffer, " ");
         while(token != NULL){
-        	size = 0;
-        	size += strlen(token) +1;
             exec_args[k] = token;
         	token = strtok(NULL, " ");
         	k++;
-        	total_size += size;
         }
-        total_size -= size;
         exec_args[k] = "\0";
 
         char line[MAX_BUFF];
-        size = 0;
+        int size = 0;
         for(i=0; i<k-2; i+=1){
         	strcpy(line+size, exec_args[i]);
         	size += strlen(exec_args[i]);
@@ -351,7 +384,7 @@ int main(int argc, char *argv[]){
         int num_args = k-1;
         int priority;
 	    
-	    // verificamos, caso seja o status não adicionamos
+	    // verificamos, caso seja o status não adicionamos, caso contrário insere-se na lista ligada a task
         if(num_args!=2){
         	if(strcmp(exec_args[2], "-p") == 0){
         		priority = atoi(exec_args[3]);
@@ -371,8 +404,9 @@ int main(int argc, char *argv[]){
 		if(fork() == 0){
         	if(num_args == 2){
         		print_linked_list(&tasks);
+        		status(&tasks, pid, task_numero);
         	} else {
-        	//	transformations(exec_args, num_args, argv[2], fixed_args);
+        		//transformations(exec_args, num_args, argv[2], fixed_args);
         	}
         	_exit(-1);  
         }
