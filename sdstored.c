@@ -246,8 +246,8 @@ void transformations(char* line[], int num_args, char* path_transf_folder, int f
 		transformations[i] = malloc(sizeof(line[i+fixed_args]));
 		strcpy(transformations[i],line[i+fixed_args]);
 	//	printf("%s\n", transformations[i]);
-	}
-
+	}	
+	
 	int p[num_transfs-1][2];
 	char *transf;
 
@@ -256,7 +256,32 @@ void transformations(char* line[], int num_args, char* path_transf_folder, int f
 		// transf ----> ./SDStore-transf/transformação
 		transf = cria_transf(transf, path_transf_folder, transformations, i);
 		printf("Transf: %s\n", transf);
-		if(i == 0){
+		printf("Num args: %d\n", num_transfs);
+		
+		if(num_transfs == 1){
+			printf("Entrei aqui");
+			if(fork() == 0){
+				int fd = open(input_file, O_RDONLY);
+				if(fd == -1){
+					perror("erro ao abrir o file de input");
+				}
+				dup2(fd, READ);
+				close(fd);
+
+				int output = open(output_file, O_CREAT |  O_WRONLY, 0666);
+				if(output == -1){
+					perror("erro ao abrir o file de input");
+				}
+				dup2(output, WRITE);
+				close(output);
+				execlp(transf, transf, NULL);
+				perror("Algo de errado aconteceu");
+				_exit(-1);
+			} else {
+				wait(NULL);
+			}				
+
+		} else if(i == 0){
 			pipe(p[i]);
 			if(fork() == 0){
 				int fd = open(input_file, O_RDONLY);
@@ -269,6 +294,7 @@ void transformations(char* line[], int num_args, char* path_transf_folder, int f
 
 				dup2(p[i][WRITE], WRITE);
 				close(p[i][WRITE]);
+				
 				execlp(transf, transf, NULL);
 				perror("Algo de errado aconteceu");
 				_exit(-1);
