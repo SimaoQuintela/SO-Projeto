@@ -120,140 +120,10 @@ void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 	*/
 }
 
-char* cria_transf(char* transf, char* path_transf_folder, char* transformations[], int index){
-	int length_path_folder = strlen(path_transf_folder);
-	int length_transf = strlen(transformations[index]);
-	
-	transf = malloc(sizeof(length_path_folder + length_transf));
-	strcpy(transf, path_transf_folder);
-	strcpy(transf + length_path_folder, transformations[index]);
-
-	return transf;
-//	printf("%s\n", transf);
-}
 
 
 
-void transformations(char* line[], int num_args, char* path_transf_folder, int fixed_args){
-	
-	char *transformations[num_args-fixed_args];
-	int num_transfs = num_args-fixed_args-1;
 
-	char* input_file = malloc(sizeof(line[fixed_args-2]));
-	strcpy(input_file, line[fixed_args-2]);
-
-	char* output_file = malloc(sizeof(line[fixed_args-1]));
-	strcpy(output_file, line[fixed_args-1]);
-
-	/**
-	 * Coloca no array transformations as transformações a executar
-	 */
-	for(int i=0; i<(num_args-fixed_args); i+=1){
-		transformations[i] = malloc(sizeof(line[i+fixed_args]));
-		strcpy(transformations[i],line[i+fixed_args]);
-	//	printf("%s\n", transformations[i]);
-	}
-
-	int p[num_transfs-1][2];
-	char *transf;
-
-	for(int i =0; i<num_transfs; i+=1){
-		printf("num transfs: %d\n", num_transfs);
-		// transf ----> SDStore-transf/transformação
-		transf = cria_transf(transf, path_transf_folder, transformations, i);
-		printf("%s\n", transf);
-		
-		if(i == 0){
-			pipe(p[i]);
-			if(fork() == 0){
-				close(p[i][READ]);
-				printf("executei no i = %d\n", i);
-				dup2(p[i][WRITE], WRITE);
-				close(p[i][WRITE]);
-				printf("\nTransf: %s\n", transf);
-				printf("Input File: %s\n", input_file);
-				printf("Output File: %s\n", output_file);
-				execlp(transf, transf, input_file, output_file,NULL);
-				perror("Algo de errado aconteceu");
-			} else {
-				close(p[i][WRITE]);
-			}
-		} else if (i == num_transfs-1) {
-			if(fork() == 0){
-				printf("executei no i = %d", i);
-				dup2(p[i-1][READ], READ);
-				close(p[i-1][READ]);
-				printf("\nTransf: %s\n", transf);
-				printf("Input File: %s\n", input_file);
-				printf("Output File: %s\n", output_file);
-				execlp(transf, transf, input_file, output_file, NULL);
-				perror("Algo de errado aconteceu");
-			} else {
-				close(p[i-1][READ]);
-			}
-		} else {
-			pipe(p[i]);
-			if(fork() == 0){
-				printf("executei no i = %d", i);
-				close(p[i][READ]);
-				dup2(p[i-1][READ], READ);
-				close(p[i-1][READ]);
-				dup2(p[i][WRITE], WRITE);
-				close(p[i][WRITE]);
-				printf("\nTransf: %s\n", transf);
-				printf("Input File: %s\n", input_file);
-				printf("Output File: %s\n", output_file);
-				execlp(transf, transf, input_file, output_file, NULL);
-				perror("Algo de errado aconteceu");
-			} else {
-				close(p[i-1][READ]);
-				close(p[i][WRITE]);
-			}
-		}
-		
-	}
-}
-
-void status(tasks_running *tasks, char pid[], int running_tasks){
-	// one more buffer hum
-	char buffer[2048];
-
-	printf("Pipe com o pid %s aberto\n", pid);
-	int pipe_pid = open(pid, O_WRONLY, 0666);
-	if(pipe_pid == -1){
-		perror("Erro ao abrir o pipe com o pid\n");
-	}
-
-	// para escrever as tasks por ordem
-	int num_task = 1;
-	int tamanho;
-	for(int i=0; i<running_tasks; i+=1){
-		char line[200];
-		tasks_running temp = *tasks;
-
-		while(temp != NULL && temp->task_num != num_task){
-			temp = (&(*temp))->prox_task;
-		}
-		tamanho = snprintf(line, 200, "task #%d: %s", temp->task_num, temp->line);
-		num_task +=1;
-
-		write(pipe_pid, line, tamanho);
-		write(pipe_pid, "\n", 1);
-		free(temp);		// temos de ser ecológicos meus amigos
-	}
-
-	// escrever as transformações
-	for(int i=0; i<7; i+=1){
-		char line[MAX_BUFF];
-		tamanho = snprintf(line, MAX_BUFF, "transf %s: %d/%d (running/max)", conf_file[i].transformation, conf_file[i].current_num_transf, conf_file[i].max_exec_transf);
-		write(pipe_pid, line, tamanho);
-		write(pipe_pid, "\n", 1);
-	}
-
-
-
-	close(pipe_pid);
-}
 
 int getIndice(char* transf){   //funçao auxiliar que apenas nos da o indice de ocorrencia da transformaçao no conf_file[]
 	int r;
@@ -301,10 +171,148 @@ int available(config_file conf_file[], char* line[], int num_args, int fixed_arg
 }
 
 
-void write_line_to_execute(char* line_to_execute[]){
+void status(tasks_running *tasks, char pid[], int running_tasks){
+	// one more buffer hum
+	char buffer[2048];
 
+	printf("Pipe com o pid %s aberto\n", pid);
+	int pipe_pid = open(pid, O_WRONLY, 0666);
+	if(pipe_pid == -1){
+		perror("Erro ao abrir o pipe com o pid\n");
+	}
+
+	// para escrever as tasks por ordem
+	int num_task = 1;
+	int tamanho;
+	for(int i=0; i<running_tasks; i+=1){
+		char line[200];
+		tasks_running temp = *tasks;
+
+		while(temp != NULL && temp->task_num != num_task){
+			temp = (&(*temp))->prox_task;
+		}
+		tamanho = snprintf(line, 200, "task #%d: %s", temp->task_num, temp->line);
+		num_task +=1;
+
+		write(pipe_pid, line, tamanho);
+		write(pipe_pid, "\n", 1);
+		free(temp);		// temos de ser ecológicos meus amigos
+	}
+
+	// escrever as transformações
+	for(int i=0; i<7; i+=1){
+		char line[MAX_BUFF];
+		tamanho = snprintf(line, MAX_BUFF, "transf %s: %d/%d (running/max)", conf_file[i].transformation, conf_file[i].current_num_transf, conf_file[i].max_exec_transf);
+		write(pipe_pid, line, tamanho);
+		write(pipe_pid, "\n", 1);
+	}
+
+
+
+	close(pipe_pid);
 }
 
+char* cria_transf(char* transf, char* path_transf_folder, char* transformations[], int index){
+	int length_path_folder = strlen(path_transf_folder);
+	int length_transf = strlen(transformations[index]);
+	
+	transf = malloc(sizeof(length_path_folder + length_transf +2));
+	strcpy(transf, "./");
+	strcpy(transf + 2, path_transf_folder);
+	strcpy(transf + 2 + length_path_folder, transformations[index]);
+
+	return transf;
+//	printf("%s\n", transf);
+}
+
+void transformations(char* line[], int num_args, char* path_transf_folder, int fixed_args){
+	
+	char *transformations[num_args-fixed_args];
+	int num_transfs = num_args-fixed_args;
+
+	char* input_file = malloc(sizeof(line[fixed_args-2]));
+	strcpy(input_file, line[fixed_args-2]);
+
+	char* output_file = malloc(sizeof(line[fixed_args-1]));
+	strcpy(output_file, line[fixed_args-1]);
+
+	printf("Input File: %s\n", input_file);
+	printf("Output File: %s\n", output_file);
+	
+	/**
+	 * Coloca no array transformations as transformações a executar
+	 */
+	for(int i=0; i<(num_args-fixed_args); i+=1){
+		transformations[i] = malloc(sizeof(line[i+fixed_args]));
+		strcpy(transformations[i],line[i+fixed_args]);
+	//	printf("%s\n", transformations[i]);
+	}
+
+	int p[num_transfs-1][2];
+	char *transf;
+
+	printf("num transfs: %d\n\n\n", num_transfs);
+	for(int i =0; i<num_transfs; i+=1){
+		// transf ----> ./SDStore-transf/transformação
+		transf = cria_transf(transf, path_transf_folder, transformations, i);
+		printf("Transf: %s\n", transf);
+		if(i == 0){
+			pipe(p[i]);
+			if(fork() == 0){
+				int fd = open(input_file, O_RDONLY);
+				if(fd == -1){
+					perror("erro ao abrir o file de input");
+				}
+				dup2(fd, READ);
+				close(fd);
+				close(p[i][READ]);
+
+				dup2(p[i][WRITE], WRITE);
+				close(p[i][WRITE]);
+				execlp(transf, transf, NULL);
+				perror("Algo de errado aconteceu");
+				_exit(-1);
+			} else {
+				wait(NULL);
+				close(p[i][WRITE]);
+			}
+		} else if (i == num_transfs-1) {
+			if(fork() == 0){
+				dup2(p[i-1][READ], READ);
+				close(p[i-1][READ]);
+				int output = open(output_file, O_CREAT | O_TRUNC |  O_WRONLY, 0666);
+				if(output == -1){
+					perror("erro ao abrir o file de input");
+				}
+				dup2(output, WRITE);
+				close(output);
+				execlp(transf, transf, NULL);
+				perror("Algo de errado aconteceu");
+				_exit(-1);
+			} else {
+				wait(NULL);
+				close(p[i-1][READ]);
+			}
+		} else {
+			pipe(p[i]);
+			if(fork() == 0){
+				close(p[i][READ]);
+				dup2(p[i-1][READ], READ);
+				close(p[i-1][READ]);
+				dup2(p[i][WRITE], WRITE);
+				close(p[i][WRITE]);
+				execlp(transf, transf, NULL);
+				perror("Algo de errado aconteceu");
+				_exit(-1);
+			} else {
+				wait(NULL);
+				close(p[i-1][READ]);
+				close(p[i][WRITE]);
+			}
+		}
+		
+	}
+}
 
 
 int main(int argc, char *argv[]){
@@ -406,7 +414,7 @@ int main(int argc, char *argv[]){
         		print_linked_list(&tasks);
         		status(&tasks, pid, task_numero);
         	} else {
-        		//transformations(exec_args, num_args, argv[2], fixed_args);
+        		transformations(exec_args, num_args, argv[2], fixed_args);
         	}
         	_exit(-1);  
         }
