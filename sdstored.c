@@ -136,50 +136,6 @@ void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 
 
 
-int getIndice(char* transf){   //funçao auxiliar que apenas nos da o indice de ocorrencia da transformaçao no conf_file[]
-	int r;
-
-	if(strcmp(transf, "nop") == 0) r = 0;
-	else if(strcmp(transf, "bcompress") == 0) r = 1;
-	else if(strcmp(transf, "bdecompress") == 0) r = 2;
-	else if(strcmp(transf, "gcompress") == 0) r = 3;
-	else if(strcmp(transf, "gdecompress") == 0) r = 4;
-	else if(strcmp(transf, "encrypt") == 0) r = 5;
-	else if(strcmp(transf, "decrypt") == 0) r = 6;
-        else r=-1;
-
-        return r;
-
-}
-
-int available(config_file conf_file[], char* line[], int num_args, int fixed_args){
-           
-    int i, ind;
-	int r=1;
-	int arr[7] = {0,0,0,0,0,0,0};   //array onde estará guardado, no respetivo indice da transformaçao, o numero de transformaçoes a executar
-
-	for(i=fixed_args; i<(num_args); i++){
-	    ind = getIndice(line[i]);
-	    arr[ind]++;  
-   
-	}
-	
-	
-	for(i=0; i<7; i++){   
-		if((conf_file[i].current_num_transf + arr[i]) > conf_file[i].max_exec_transf) {
-			r = 0; //se os que estao a correr mais os que queremos correr for maior que o maximo, retorna 0	
-			break;
-		}
-	}
-
-	if(r == 1){
-		for(i=0; i<7; i+=1){
-			conf_file[i].current_num_transf += arr[i];
-		}
-	}
-
-	return r;     
-}
 
 
 void status(tasks_running *tasks, char pid[], int running_tasks){
@@ -351,58 +307,77 @@ void transformations(char* line[], int num_args, char* path_transf_folder, int f
 	}
 }
 
+int getIndice(char* transf){   //funçao auxiliar que apenas nos da o indice de ocorrencia da transformaçao no conf_file[]
+	int r;
 
-void child_handler(int signum){
-	int pid, status;
-	pid = waitpid(-1, &status, WNOHANG);
+	if(strcmp(transf, "nop") == 0) r = 0;
+	else if(strcmp(transf, "bcompress") == 0) r = 1;
+	else if(strcmp(transf, "bdecompress") == 0) r = 2;
+	else if(strcmp(transf, "gcompress") == 0) r = 3;
+	else if(strcmp(transf, "gdecompress") == 0) r = 4;
+	else if(strcmp(transf, "encrypt") == 0) r = 5;
+	else if(strcmp(transf, "decrypt") == 0) r = 6;
+        else r=-1;
 
-	printf("ta a funcionar. pid: %d\n", pid);
-	if(pid != -1){
-		// remover a task da nossa lista de tasks e atualizar a tabela
-	}	
-	
-	
+        return r;
+
 }
-/* fazer de novo estas duas funções
-int available_to_execute(char line[], int num_args, int fixed_args){
+
+void update_struct(tasks_running task){
+	char* line = malloc(sizeof(task->line));
+	char* line_splited[MAX_BUFF];
 	char* token;
-	char* exec_args[MAX_BUFF];
-	int k = 0;
-	char line_aux[MAX_BUFF];
+	int i=0;
 
-	strcpy(line_aux, line);
-	token = strtok(line_aux, " ");
-    while(token != NULL){
-        exec_args[k] = token;
-        token = strtok(NULL, " ");
-        k++;
-    }
-    exec_args[k] = "\0";
+	token = strtok(line, " ");
+	while(token != NULL){
+		line_splited[i] = malloc(sizeof(token));
+		strcpy(line_splited[i], token);
+		token = strtok(NULL, " ");
+		i+=1;
+	}
+	token[i] = '\0';
 
-    int r = available(conf_file, exec_args, num_args, fixed_args);
-    return r;
-
-}
-
-char* choose_line_to_execute(){
-	tasks_running temp = tasks;
-	char* line_to_execute = NULL;
-	while(temp != NULL){
-		if(temp->in_process == 0 && available_to_execute(temp->line, temp->num_args, temp->fixed_args) == 0){
-			line_to_execute = malloc(sizeof(temp->line));
-			strcpy(line_to_execute, temp->line);
-			temp->in_process = 1;
-		//	printf("linha aceite: %s\n", line_to_execute);
-			break;
-		}
-
-		temp = temp->prox_task;
+	for(i = task->fixed_args; i<task->num_args; i+=1){
+		int index = getIndice(line_splited[i]);
+		conf_file[i].current_num_transf -= 1;
 	}
 
-	printf("BLA %s\n", line_to_execute);
-	return line_to_execute;
 }
-*/
+
+
+
+
+int available(config_file conf_file[], char* line[], int num_args, int fixed_args){
+           
+    int i, ind;
+	int r=1;
+	int arr[7] = {0,0,0,0,0,0,0};   //array onde estará guardado, no respetivo indice da transformaçao, o numero de transformaçoes a executar
+
+	for(i=fixed_args; i<(num_args); i++){
+	    ind = getIndice(line[i]);
+	    arr[ind]++;  
+   
+	}
+	
+	
+	for(i=0; i<7; i++){   
+		if((conf_file[i].current_num_transf + arr[i]) > conf_file[i].max_exec_transf) {
+			r = 0; //se os que estao a correr mais os que queremos correr for maior que o maximo, retorna 0	
+			break;
+		}
+	}
+
+	if(r == 1){
+		for(i=0; i<7; i+=1){
+			conf_file[i].current_num_transf += arr[i];
+		}
+	}
+
+	return r;     
+}
+
+
 
 void print_conf_file(){
 	for(int i=0; i<7; i+=1){
@@ -411,6 +386,54 @@ void print_conf_file(){
 		printf("Max: %d\n", conf_file[i].max_exec_transf);
 	}
 }
+
+
+// fazer de novo estas duas funções
+int available_to_execute(char line[], int num_args, int fixed_args){
+	char* token;
+	char* exec_args[MAX_BUFF];
+	int k = 0;
+	char line_aux[MAX_BUFF];
+	strcpy(line_aux, line);
+	token = strtok(line_aux, " ");
+    while(token != NULL){
+        exec_args[k] = token;
+        token = strtok(NULL, " ");
+        k++;
+    }
+    exec_args[k] = "\0";
+    int r = available(conf_file, exec_args, num_args, fixed_args);
+    return r;
+}
+
+char* choose_line_to_execute(){
+	tasks_running temp = tasks;
+	char* line_to_execute = NULL;
+	while(temp != NULL){
+		if(temp->in_process == 0 && available_to_execute(temp->line, temp->num_args, temp->fixed_args) == 1){
+			line_to_execute = malloc(sizeof(temp->line));
+			strcpy(line_to_execute, temp->line);
+			temp->in_process = 1;
+		//	printf("linha aceite: %s\n", line_to_execute);
+			break;
+		}
+		temp = temp->prox_task;
+	}
+	printf("BLA %s\n", line_to_execute);
+	return line_to_execute;
+}
+
+void child_handler(int signum){
+	int pid, status;
+	pid = waitpid(-1, &status, WNOHANG);
+	tasks_running task;
+	printf("ta a funcionar, pid: %d\n", pid);
+	
+	if(pid != -1){
+	}
+
+}
+
 
 
 int main(int argc, char *argv[]){
@@ -503,10 +526,9 @@ int main(int argc, char *argv[]){
         	}
 
         	task = add_task(&tasks, task_numero, line, priority, pid, fixed_args, num_args, 0);
-        	printf("LINE: %s\n", line);
         	task_numero += 1;
         	line_to_execute = choose_line_to_execute();
-        	printf("Linha a executar: %s\n", line_to_execute);
+        	//printf("Linha a executar: %s\n", line_to_execute);
 
         	int t = 0;
 	 		token = strtok(line_to_execute, " ");
@@ -529,7 +551,7 @@ int main(int argc, char *argv[]){
         		print_linked_list(&tasks);
         		print_conf_file();
         	//	status(&tasks, pid, task_numero);
-        	} else {
+        	} else if (broken_line == NULL) {
         		transformations(broken_line, num_args, argv[2], fixed_args);
         	}
         	_exit(-1);  
