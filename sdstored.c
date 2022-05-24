@@ -38,8 +38,6 @@ typedef struct tasks_running {
 // variáveis globais
 tasks_running tasks;
 config_file conf_file[7];
-int pids_filhos[1024];
-int num_pids_filhos = 0;
 
 
 /**
@@ -86,6 +84,8 @@ void print_linked_list(tasks_running *tasks){
 		printf("Linha: %s\n", temp->line);
 		printf("Pid: %s\n", temp->pid);
 		printf("Pid Fork: %d\n", temp->pid_fork);
+		printf("Fixed args: %d\n", temp->fixed_args);
+		printf("Num args: %d\n", temp->num_args);
 		printf("Task #%d\n", temp->task_num);
 		printf("Prioridade: %d\n", temp->priority);
 		printf("Em processamento: %d\n\n", temp->in_process);
@@ -363,22 +363,55 @@ void child_handler(int signum){
 	
 	
 }
+/* fazer de novo estas duas funções
+int available_to_execute(char line[], int num_args, int fixed_args){
+	char* token;
+	char* exec_args[MAX_BUFF];
+	int k = 0;
+	char line_aux[MAX_BUFF];
 
-char* choose_line_to_execute(int num_args, int fixed_args){
+	strcpy(line_aux, line);
+	token = strtok(line_aux, " ");
+    while(token != NULL){
+        exec_args[k] = token;
+        token = strtok(NULL, " ");
+        k++;
+    }
+    exec_args[k] = "\0";
+
+    int r = available(conf_file, exec_args, num_args, fixed_args);
+    return r;
+
+}
+
+char* choose_line_to_execute(){
 	tasks_running temp = tasks;
-	while(temp->in_process == 1 && temp->prox_task != NULL){
-		if(temp->in_process == 0 && está disponivel para execução){
-			seleciona essa linha;
+	char* line_to_execute = NULL;
+	while(temp != NULL){
+		if(temp->in_process == 0 && available_to_execute(temp->line, temp->num_args, temp->fixed_args) == 0){
+			line_to_execute = malloc(sizeof(temp->line));
+			strcpy(line_to_execute, temp->line);
+			temp->in_process = 1;
+		//	printf("linha aceite: %s\n", line_to_execute);
 			break;
 		}
 
 		temp = temp->prox_task;
 	}
 
-	char* line_to_execute = malloc(sizeof(temp->line));
-	strcpy(line_to_execute, temp->line);
+	printf("BLA %s\n", line_to_execute);
 	return line_to_execute;
 }
+*/
+
+void print_conf_file(){
+	for(int i=0; i<7; i+=1){
+		printf("Transf: %s\n", conf_file[i].transformation);
+		printf("Num a correr: %d\n", conf_file[i].current_num_transf);
+		printf("Max: %d\n", conf_file[i].max_exec_transf);
+	}
+}
+
 
 int main(int argc, char *argv[]){
 
@@ -409,11 +442,6 @@ int main(int argc, char *argv[]){
 	printf("Main pipe criado com sucesso\n");
 
 
-
-
-
-
-
 	signal(SIGCHLD, child_handler); 
 	while(1){
 		i = 0;
@@ -434,7 +462,8 @@ int main(int argc, char *argv[]){
 		int k = 0;
 	 	token = strtok(buffer, " ");
         while(token != NULL){
-            exec_args[k] = token;
+        	exec_args[k] = malloc(sizeof(token));
+            strcpy(exec_args[k], token);
         	token = strtok(NULL, " ");
         	k++;
         }
@@ -450,7 +479,6 @@ int main(int argc, char *argv[]){
         }
         strcpy(line+size, exec_args[i]);
         size += strlen(exec_args[i]);
-
         strcpy(pid,exec_args[k-1]);
 
 
@@ -465,6 +493,8 @@ int main(int argc, char *argv[]){
 	    
 	    // verificamos, caso seja o status não adicionamos, caso contrário insere-se na lista ligada a task
 	    tasks_running task;
+        char *line_to_execute;
+        char *broken_line[MAX_BUFF];
         if(num_args!=2){
         	if(strcmp(exec_args[2], "-p") == 0){
         		priority = atoi(exec_args[3]);
@@ -472,37 +502,32 @@ int main(int argc, char *argv[]){
         		priority = 0;
         	}
 
-        	if(available(conf_file, exec_args, num_args, fixed_args) == 1){
-			   	task = add_task(&tasks, task_numero, line, priority, pid, fixed_args, num_args, 1);
-		    
-        	} else {
-        		task = add_task(&tasks, task_numero, line, priority, pid, fixed_args, num_args, 0);
-        	}
+        	task = add_task(&tasks, task_numero, line, priority, pid, fixed_args, num_args, 0);
+        	printf("LINE: %s\n", line);
         	task_numero += 1;
+        	line_to_execute = choose_line_to_execute();
+        	printf("Linha a executar: %s\n", line_to_execute);
+
+        	int t = 0;
+	 		token = strtok(line_to_execute, " ");
+        	while(token != NULL){
+        	    broken_line[t] = token;
+        		token = strtok(NULL, " ");
+        		t++;
+        	}
+        	broken_line[t] = "\0";
+     		//printf("broken_line: %s\n", broken_line[1]);
+     		//printf("broken_line: %s\n", broken_line[2]);
         }
         
+
+
         int pid_fork;
-        char *line_to_execute;
-        line_to_execute = choose_line_to_execute();
-        char *broken_line[MAX_BUFF];
-
-        printf("Linha a executar: %s\n", line_to_execute);
-        int t = 0;
-	 	token = strtok(line_to_execute, " ");
-        while(token != NULL){
-            broken_line[t] = token;
-        	token = strtok(NULL, " ");
-        	t++;
-        }
-        broken_line[t] = "\0";
-
-     	//printf("broken_line: %s\n", broken_line[1]);
-     	//printf("broken_line: %s\n", broken_line[2]);
-
-        m += 1;
 		if( (pid_fork = fork()) == 0){
+			sleep(5);
         	if(num_args == 2){
         		print_linked_list(&tasks);
+        		print_conf_file();
         	//	status(&tasks, pid, task_numero);
         	} else {
         		transformations(broken_line, num_args, argv[2], fixed_args);
@@ -511,8 +536,6 @@ int main(int argc, char *argv[]){
         } else {
         	if(num_args != 2){
             	task->pid_fork = pid_fork;
-            	pids_filhos[num_pids_filhos] = pid_fork;
-            	num_pids_filhos += 1;
             }
 		}
 	}
