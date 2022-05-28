@@ -101,6 +101,7 @@ tasks_running add_task(tasks_running *tasks, int running_tasks, char input[], in
 
 }
 
+/*
 void print_linked_list(tasks_running *tasks){
 	tasks_running temp = *tasks;
 	while(temp != NULL){
@@ -119,7 +120,7 @@ void print_linked_list(tasks_running *tasks){
 		temp = temp->prox_task;
 	}
 }
-
+*/
 
 void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 	char buffer[MAX_BUFF];
@@ -165,46 +166,6 @@ void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 
 
 
-void status(tasks_running *tasks, char pid[], int running_tasks){
-	// one more buffer hum
-	char buffer[2048];
-
-	printf("Pipe com o pid %s aberto\n", pid);
-	int pipe_pid = open(pid, O_WRONLY, 0666);
-	if(pipe_pid == -1){
-		perror("Erro ao abrir o pipe com o pid\n");
-	}
-
-	// para escrever as tasks por ordem
-	int num_task = 1;
-	int tamanho;
-	for(int i=0; i<running_tasks; i+=1){
-		char line[200];
-		tasks_running temp = *tasks;
-
-		while(temp != NULL && temp->task_num != num_task){
-			temp = (&(*temp))->prox_task;
-		}
-		tamanho = snprintf(line, 200, "task #%d: %s", temp->task_num, temp->line);
-		num_task +=1;
-
-		write(pipe_pid, line, tamanho);
-		write(pipe_pid, "\n", 1);
-		free(temp);		// temos de ser ecológicos meus amigos
-	}
-
-	// escrever as transformações
-	for(int i=0; i<7; i+=1){
-		char line[MAX_BUFF];
-		tamanho = snprintf(line, MAX_BUFF, "transf %s: %d/%d (running/max)", conf_file[i].transformation, conf_file[i].current_num_transf, conf_file[i].max_exec_transf);
-		write(pipe_pid, line, tamanho);
-		write(pipe_pid, "\n", 1);
-	}
-
-
-
-	close(pipe_pid);
-}
 
 tasks_running find_line_to_execute(char* line){
 	tasks_running temp = tasks;
@@ -263,7 +224,7 @@ void transformations(char* line[], int num_args, char* path_transf_folder, int f
 //		printf("Num args: %d\n", num_transfs);
 		
 		if(num_transfs == 1){
-			printf("Entrei aqui\n");
+		//	printf("Entrei aqui\n");
 			if(fork() == 0){
 				int fd = open(input_file, O_RDONLY);
 				if(fd == -1){
@@ -394,7 +355,7 @@ int available(config_file conf_file[], char* line[], int num_args, int fixed_arg
 }
 
 
-
+/*
 void print_conf_file(){
 	for(int i=0; i<7; i+=1){
 		printf("Transf: %s\n", conf_file[i].transformation);
@@ -402,15 +363,7 @@ void print_conf_file(){
 		printf("Max: %d\n", conf_file[i].max_exec_transf);
 	}
 }
-
-void adiciona_pid_fork(char* line, int pid_fork){
-	tasks_running temp = tasks;
-	while(strcmp(temp->line, line) != 0){
-		temp = temp->prox_task;
-	}
-
-	temp->pid_fork = pid_fork;
-}
+*/
 
 char* choose_line_to_execute(){
 	tasks_running temp = tasks;
@@ -425,7 +378,7 @@ char* choose_line_to_execute(){
 		}
 		temp = temp->prox_task;
 	}
-	printf("BLA %s\n", line_to_execute);
+//	printf("BLA %s\n", line_to_execute);
 	return line_to_execute;
 }
 
@@ -443,7 +396,7 @@ void child_handler(int signum){
 	int pid, status;
 	pid = waitpid(-1, &status, WNOHANG);
 	tasks_running task;
-	
+//	printf("pid handler: %d\n", pid);
 	if(pid != -1){
 		tasks_running temp = tasks;
 
@@ -452,12 +405,49 @@ void child_handler(int signum){
 		}
 
 		if(temp != NULL){
-		//	update_struct(temp, conf_file);
+			update_struct(temp, conf_file);
 		//	remove_task(&tasks, temp->task_num);
 		}
 
 	}
 
+}
+
+void status(tasks_running tasks, char pid[], int num_tasks){
+	
+	printf("Pipe com o pid %s aberto\n", pid);
+	int pipe_pid = open(pid, O_WRONLY, 0666);
+	if(pipe_pid == -1){
+		perror("Erro ao abrir o pipe com o pid\n");
+	}
+	printf("Pronto para escrever\n");
+
+	char buffer[512];
+
+	tasks_running temp = tasks;
+	int size = 0;
+	while(temp != NULL){
+		size += snprintf(buffer + size, MAX_BUFF, "Task #%d: %s\n", temp->task_num, temp->line);
+		temp = temp->prox_task;
+	}
+	printf("passei por aqui\n");
+
+
+	write(pipe_pid, buffer, size);
+
+
+
+	// escrever as transformações
+	for(int i=0; i<7; i+=1){
+		char line[MAX_BUFF];
+		int tamanho = snprintf(line, MAX_BUFF, "transf %s: %d/%d (running/max)", conf_file[i].transformation, conf_file[i].current_num_transf, conf_file[i].max_exec_transf);
+		write(pipe_pid, line, tamanho);
+		write(pipe_pid, "\n", 1);
+	}
+
+
+
+	close(pipe_pid);
 }
 
 int main(int argc, char *argv[]){
@@ -512,32 +502,39 @@ int main(int argc, char *argv[]){
         }
         exec_args[k] = "\0";
 
-        char line[MAX_BUFF];
-        int size = 0;
-        for(i=0; i<k-2; i+=1){
-        	strcpy(line+size, exec_args[i]);
-        	size += strlen(exec_args[i]);
-        	strcpy(line+size, " ");
-        	size += 1;
-        }
-        strcpy(line+size, exec_args[i]);
-        size += strlen(exec_args[i]);
-
-        int tamanho = strlen(exec_args[k-1]);
-
-        strcpy(pid,exec_args[k-1]);
-        pid[tamanho] = '\0';
 
 		int priority;
-        if(k!=3 && strcmp(exec_args[2], "-p") == 0){
-        	fixed_args = 6;
-        	priority = atoi(exec_args[3]);
+        char line[MAX_BUFF];
+        int num_args;
+        if(strcmp(exec_args[1], "status") != 0){
+        	int size = 0;
+        	for(i=0; i<k-2; i+=1){
+        		strcpy(line+size, exec_args[i]);
+        		size += strlen(exec_args[i]);
+        		strcpy(line+size, " ");
+        		size += 1;
+        	}
+        	strcpy(line+size, exec_args[i]);
+        	size += strlen(exec_args[i]);
+
+        	int tamanho = strlen(exec_args[k-1]);
+
+        	strcpy(pid,exec_args[k-1]);
+        	pid[tamanho] = '\0';
+
+        	if(k!=3 && strcmp(exec_args[2], "-p") == 0){
+        		fixed_args = 6;
+        		priority = atoi(exec_args[3]);
+        	} else {
+        		fixed_args = 4;
+        		priority = 0;
+        	}
+        	num_args = k-1;
         } else {
-        	fixed_args = 4;
-        	priority = 0;
+        	num_args = 2;
+        	strcpy(pid, exec_args[2]);
         }
 
-        int num_args = k-1;
         
 	    
 	    tasks_running task;
@@ -545,7 +542,6 @@ int main(int argc, char *argv[]){
 
         if(num_args!=2){
         	task = add_task(&tasks, task_numero, line, priority, pid, fixed_args, num_args, 0);
-        	task_numero += 1;
         	
         	int pipe_pid = open(task->pid, O_WRONLY, 0666);
 			if(pipe_pid == -1){
@@ -566,16 +562,10 @@ int main(int argc, char *argv[]){
 
         	int pid_fork;
         	for(int j=0; j<i; j+=1){
+				tasks_running temp = find_line_to_execute(exec_tasks[j]);
         		if( (pid_fork = fork()) == 0){
-        		//	printf("teste: %s\n", exec_tasks[j]);
-					tasks_running temp = find_line_to_execute(exec_tasks[j]);
-					printf("Pid: %s\n",temp->pid);
-
-				//	int pipe_pid = open(temp->pid, O_WRONLY, 0666);
-				//	if(pipe_pid == -1){
-			//			perror("Algo de errado aconteceu");
-		//				return 5;
-	//				}
+					//printf("Pid: %s\n",temp->pid);
+        			
 					char processing[13] = "Processing...";
 					write(pipe_pid, processing, 13);
 
@@ -583,20 +573,21 @@ int main(int argc, char *argv[]){
 						transformations(temp->line_splitted, num_args, argv[2], fixed_args);
 					}
 
-					char concluded[12] = "Concluded...";
-					write(pipe_pid, concluded, 12);
+					char concluded[9] = "Concluded";
+					write(pipe_pid, concluded, 9);
 					close(pipe_pid);
 
         			_exit(-1);
         		} else {
-        		    adiciona_pid_fork(exec_tasks[j], pid_fork);
+        		    temp->pid_fork = pid_fork;
         		}	
         	}
 		} else {
-			print_linked_list(&tasks);
-        	print_conf_file();
-        	//status
+			//print_linked_list(&tasks);
+        	//print_conf_file();
+        	status(tasks, pid, task_numero);
 		}
+        task_numero += 1;
 	}
 
 	unlink("main_pipe");

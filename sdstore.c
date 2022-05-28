@@ -6,18 +6,21 @@
 #include <unistd.h> /* chamadas ao sistema: defs e decls essenciais */
 #include <fcntl.h> /* O_RDONLY, O_WRONLY, O_CREAT, O_* */
 #include <string.h>
-#define MAX_BUFF 512
+#define MAX_BUFF 100
 
-void status(char buffer[], char pid[]){
-	int i =0;
-
+void status(char pid[]){
 	int pipe_pid = open(pid, O_RDONLY, 0666);
+	printf("Tou aberto\n");
 
-	while(read(pipe_pid, buffer+i, 1) > 0){
-		i+=1;
+	int i = 0;
+	char buffer;
+	if(pipe_pid == -1){
+		perror("Erro ao abrir o main_pipe");
 	}
-
-	write(1, buffer, i);
+	
+	while (read(pipe_pid, &buffer, 1) > 0) {
+		write(1, &buffer, 1);
+	}
 
 
 	close(pipe_pid);
@@ -37,8 +40,6 @@ int main(int argc, char *argv[]){
 	if(argc == 1){
 		int size = snprintf(buffer, MAX_BUFF, "./sdstore status\n./sdstore proc-file <priority> input-filename output-filename transformation-id1 transformation-id2 ...\n");
 		write(1, buffer, size);
-	} else if(argc == 2){
-		status(buffer, pid);
 	} else {
 		int wr = open("main_pipe", O_WRONLY, 0666);
 		if(wr == -1){
@@ -70,24 +71,29 @@ int main(int argc, char *argv[]){
 	//	printf("Escrevi no pipe %d bytes\n", s);
 		close(wr);
 
-		int pipe_pid = open(pid, O_RDONLY, 0666);
-		char pending[10];
-		read(pipe_pid, pending, 10);
-		write(1, pending, 10);
+		if(argc != 2){
+			int pipe_pid = open(pid, O_RDONLY, 0666);
+			char pending[10];
+			read(pipe_pid, pending, 10);
+			write(1, pending, 10);
 
-		write(1, "\n", 1);
+			write(1, "\n", 1);
 
-		char processing[13];
-		read(pipe_pid, processing, 13);
-		write(1, processing, 13);
+			char processing[13];
+			read(pipe_pid, processing, 13);
+			write(1, processing, 13);
 
-		write(1, "\n", 1);
+			write(1, "\n", 1);
 
-		char concluded[12];
-		read(pipe_pid, concluded, 12);
-		write(1, concluded, 12);
+			char concluded[9];
+			read(pipe_pid, concluded, 9);
+			write(1, concluded, 9);
 
-		close(pipe_pid);
+			close(pipe_pid);
+		} else {
+			
+			status(pid);
+		}
 
 
 		
