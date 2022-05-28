@@ -27,6 +27,19 @@ void status(char pid[]){
 	unlink(pid);
 }
 
+int sizeFile(char line[]){
+	int fd = open(line, O_RDONLY, 0666);
+	if(fd == -1){
+		perror("Erro ao abrir o ficheiro");
+		return 1;
+	}
+
+	int size = lseek(fd, 0, SEEK_END);
+	close(fd);
+	return size;
+}
+
+
 int main(int argc, char *argv[]){
 	char buffer[MAX_BUFF];
 	char pid[10];
@@ -85,10 +98,31 @@ int main(int argc, char *argv[]){
 
 			write(1, "\n", 1);
 
+			char buff;
+			while(read(pipe_pid, &buff, 1) > 0){
+				write(1, &buff, 1);
+			}
+			
+			/*
 			char concluded[9];
 			read(pipe_pid, concluded, 9);
 			write(1, concluded, 9);
+			*/
+			/*
+			int input;
+			int output;
+			if(strcmp(argv[2], "-p") == 0){
+				input = 4;
+				output = 5; 
+			} else {
+				input = 2;
+				output = 3;
+			}
 
+			int sizeInput = sizeFile(argv[input]);
+			int sizeOutput = sizeFile(argv[output]);
+			printf("Input: %d\nOutput: %d\n", sizeInput, sizeOutput);
+*/
 			close(pipe_pid);
 		} else {
 			

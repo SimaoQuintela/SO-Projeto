@@ -37,7 +37,7 @@ typedef struct tasks_running {
 } *tasks_running;
 
 // variáveis globais
-tasks_running tasks;
+tasks_running tasks = NULL;
 config_file conf_file[7];
 
 
@@ -102,6 +102,16 @@ tasks_running add_task(tasks_running *tasks, int running_tasks, char input[], in
 }
 
 /*
+void print_conf_file(){
+	for(int i=0; i<7; i+=1){
+		printf("Transf: %s\n", conf_file[i].transformation);
+		printf("Num a correr: %d\n", conf_file[i].current_num_transf);
+		printf("Max: %d\n", conf_file[i].max_exec_transf);
+	}
+}
+*/
+
+/*
 void print_linked_list(tasks_running *tasks){
 	tasks_running temp = *tasks;
 	while(temp != NULL){
@@ -158,13 +168,6 @@ void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 	}
 	*/
 }
-
-
-
-
-
-
-
 
 
 tasks_running find_line_to_execute(char* line){
@@ -355,15 +358,6 @@ int available(config_file conf_file[], char* line[], int num_args, int fixed_arg
 }
 
 
-/*
-void print_conf_file(){
-	for(int i=0; i<7; i+=1){
-		printf("Transf: %s\n", conf_file[i].transformation);
-		printf("Num a correr: %d\n", conf_file[i].current_num_transf);
-		printf("Max: %d\n", conf_file[i].max_exec_transf);
-	}
-}
-*/
 
 char* choose_line_to_execute(){
 	tasks_running temp = tasks;
@@ -392,25 +386,17 @@ void update_struct(tasks_running task, config_file conf_file[]){
 }
 
 
-void child_handler(int signum){
-	int pid, status;
-	pid = waitpid(-1, &status, WNOHANG);
-	tasks_running task;
-//	printf("pid handler: %d\n", pid);
-	if(pid != -1){
-		tasks_running temp = tasks;
 
-		while(temp != NULL && temp->pid_fork != pid){
-			temp = temp->prox_task;
-		}
-
-		if(temp != NULL){
-			update_struct(temp, conf_file);
-		//	remove_task(&tasks, temp->task_num);
-		}
-
+int sizeFile(char line[]){
+	int fd = open(line, O_RDONLY, 0666);
+	if(fd == -1){
+		perror("Erro ao abrir o ficheiro");
+		return 1;
 	}
 
+	int size = lseek(fd, 0, SEEK_END);
+	close(fd);
+	return size;
 }
 
 void status(tasks_running tasks, char pid[], int num_tasks){
@@ -448,6 +434,26 @@ void status(tasks_running tasks, char pid[], int num_tasks){
 
 
 	close(pipe_pid);
+}
+
+void child_handler(int signum){
+	int pid, status;
+	pid = waitpid(-1, &status, WNOHANG);
+	tasks_running task;
+	if(pid != -1){
+		tasks_running temp = tasks;
+
+		while(temp != NULL && temp->pid_fork != pid){
+			temp = temp->prox_task;
+		}
+
+		if(temp != NULL){
+			update_struct(temp, conf_file);
+			remove_task(&tasks, temp->task_num);
+		}
+
+	}
+
 }
 
 int main(int argc, char *argv[]){
@@ -550,7 +556,6 @@ int main(int argc, char *argv[]){
 			}
 			char pending[10] = "Pending...";
 			write(pipe_pid, pending, 10);
-			//close(pipe_pid);
 
         	char* exec_tasks[20];
         	i =0;
@@ -573,12 +578,17 @@ int main(int argc, char *argv[]){
 						transformations(temp->line_splitted, num_args, argv[2], fixed_args);
 					}
 
-					char concluded[9] = "Concluded";
-					write(pipe_pid, concluded, 9);
+					int sizeInput = sizeFile(temp->line_splitted[temp->fixed_args -2]);
+					int sizeOutput = sizeFile(temp->line_splitted[temp->fixed_args-1]);
+
+					char buff[50];
+					int size = snprintf(buff, 50, "Concluded (bytes-input: %d, bytes-output: %d)", sizeInput, sizeOutput);
+					write(pipe_pid, buff, size);
 					close(pipe_pid);
 
         			_exit(-1);
         		} else {
+					close(pipe_pid);
         		    temp->pid_fork = pid_fork;
         		}	
         	}
