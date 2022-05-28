@@ -103,26 +103,6 @@ int main(int argc, char *argv[]){
 				write(1, &buff, 1);
 			}
 			
-			/*
-			char concluded[9];
-			read(pipe_pid, concluded, 9);
-			write(1, concluded, 9);
-			*/
-			/*
-			int input;
-			int output;
-			if(strcmp(argv[2], "-p") == 0){
-				input = 4;
-				output = 5; 
-			} else {
-				input = 2;
-				output = 3;
-			}
-
-			int sizeInput = sizeFile(argv[input]);
-			int sizeOutput = sizeFile(argv[output]);
-			printf("Input: %d\nOutput: %d\n", sizeInput, sizeOutput);
-*/
 			close(pipe_pid);
 		} else {
 			
