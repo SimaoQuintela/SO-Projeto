@@ -570,7 +570,9 @@ int main(int argc, char *argv[]){
 				tasks_running temp = find_line_to_execute(exec_tasks[j]);
         		if( (pid_fork = fork()) == 0){
 					//printf("Pid: %s\n",temp->pid);
-        			
+        			if(task_numero % 2 == 0){
+        				sleep(5);
+        			}
 					char processing[13] = "Processing...";
 					write(pipe_pid, processing, 13);
 
