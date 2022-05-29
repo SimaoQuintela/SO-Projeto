@@ -545,7 +545,6 @@ int main(int argc, char *argv[]){
 	    
 	    tasks_running task;
         char *line_to_execute;
-
         if(num_args!=2){
         	task = add_task(&tasks, task_numero, line, priority, pid, fixed_args, num_args, 0);
         	
@@ -570,9 +569,9 @@ int main(int argc, char *argv[]){
 				tasks_running temp = find_line_to_execute(exec_tasks[j]);
         		if( (pid_fork = fork()) == 0){
 					//printf("Pid: %s\n",temp->pid);
-        			if(task_numero % 2 == 0){
-        				sleep(5);
-        			}
+        			//if(task_numero % 2 == 0){
+        			//	sleep(5);
+        			//}
 					char processing[13] = "Processing...";
 					write(pipe_pid, processing, 13);
 
@@ -594,12 +593,12 @@ int main(int argc, char *argv[]){
         		    temp->pid_fork = pid_fork;
         		}	
         	}
+        	task_numero += 1;
 		} else {
 			//print_linked_list(&tasks);
         	//print_conf_file();
         	status(tasks, pid, task_numero);
 		}
-        task_numero += 1;
 	}
 
 	unlink("main_pipe");

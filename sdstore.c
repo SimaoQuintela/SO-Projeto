@@ -102,7 +102,6 @@ int main(int argc, char *argv[]){
 			while(read(pipe_pid, &buff, 1) > 0){
 				write(1, &buff, 1);
 			}
-			
 			close(pipe_pid);
 		} else {
 			
