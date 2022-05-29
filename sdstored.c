@@ -17,23 +17,24 @@
 typedef struct config_file {
 	char* transformation;			// transformação
 	int current_num_transf;  		// número de transformações a correr 
-	int max_exec_transf;			// número máximo de transformações que podem correr
+	int max_exec_transf;			// número máximo de transformações que podem correr do tipo transformation
 } config_file;
 
 /**
  * Lista ligada que representa as tasks que estão a correr de momento
  */
 typedef struct tasks_running {
-	int task_num;					// número da task
-	char pid[10];
-	int pid_fork; // falta adicionar isto às funções de listas ligadas
-	char line[128];			// descrição da task
-	char* line_splitted[20];	
-	int in_process;					// 0 -> por processar 1-> em processamento
-	int fixed_args;
-	int num_args;
-	int priority;
-	struct tasks_running *prox_task;
+	int task_num;					 // número da task
+	char pid[10];					 // pid do cliente que envia a task
+	int pid_fork; 					 // pid do processo que responde ao pedido do cliente
+	char line[128];					 // linha a executar
+	char* line_splitted[20];		 // linha a executar partida
+	int in_process;					 // 0 -> task por processar 1-> task em processamento
+	int fixed_args;					 // número de argumentos fixos da linha a executar 
+	int num_args;					 // número de argumentos da linha da linha a executar
+  									 // Nota:  O número de transformações a executar calcula-se fazendo num_args - fixed_args
+	int priority;					 // prioridade da tarefa
+	struct tasks_running *prox_task; // apontador para a próxima task na lista
 } *tasks_running;
 
 // variáveis globais
@@ -145,13 +146,11 @@ void fill_struct_conf_file(config_file conf_file[], char* path_to_conf_file){
 	while(read(fd, buffer+i, 1)){
 		if( buffer[i] == ' '){
 			buffer[i] = '\0'; 
-		//	printf("%s\n", buffer);
 			conf_file[line].transformation = (char *)malloc(sizeof(i));
 			strcpy(conf_file[line].transformation,buffer);
 			i = 0;
 		} else if(buffer[i] == '\n'){
 			buffer[i] = '\0';
-		//	printf("%s\n", buffer);
 			conf_file[line].max_exec_transf = atoi(buffer);
 			conf_file[line].current_num_transf = 0;
 			i = 0;
@@ -236,7 +235,7 @@ void transformations(char* line[], int num_args, char* path_transf_folder, int f
 				dup2(fd, READ);
 				close(fd);
 
-				int output = open(output_file, O_CREAT |  O_WRONLY, 0666);
+				int output = open(output_file, O_TRUNC | O_CREAT |  O_WRONLY, 0666);
 				if(output == -1){
 					perror("erro ao abrir o file de input");
 				}
@@ -372,7 +371,7 @@ char* choose_line_to_execute(){
 		}
 		temp = temp->prox_task;
 	}
-//	printf("BLA %s\n", line_to_execute);
+//	printf("Linha a executar: %s\n", line_to_execute);
 	return line_to_execute;
 }
 
@@ -400,13 +399,11 @@ int sizeFile(char line[]){
 }
 
 void status(tasks_running tasks, char pid[], int num_tasks){
-	
-	printf("Pipe com o pid %s aberto\n", pid);
 	int pipe_pid = open(pid, O_WRONLY, 0666);
 	if(pipe_pid == -1){
 		perror("Erro ao abrir o pipe com o pid\n");
 	}
-	printf("Pronto para escrever\n");
+	//printf("Pronto para escrever\n");
 
 	char buffer[512];
 
@@ -416,7 +413,7 @@ void status(tasks_running tasks, char pid[], int num_tasks){
 		size += snprintf(buffer + size, MAX_BUFF, "Task #%d: %s\n", temp->task_num, temp->line);
 		temp = temp->prox_task;
 	}
-	printf("passei por aqui\n");
+	//printf("passei por aqui\n");
 
 
 	write(pipe_pid, buffer, size);
@@ -480,7 +477,7 @@ int main(int argc, char *argv[]){
 		perror("Erro ao criar o pipe");
 		return 2;
 	}
-	printf("Main pipe criado com sucesso\n");
+	write(1, "Main pipe criado com sucesso\n", sizeof("Main pipe criado com sucesso\n"));
 
 
 	signal(SIGCHLD, child_handler); 

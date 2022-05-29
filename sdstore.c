@@ -10,7 +10,7 @@
 
 void status(char pid[]){
 	int pipe_pid = open(pid, O_RDONLY, 0666);
-	printf("Tou aberto\n");
+	//printf("Tou aberto\n");
 
 	int i = 0;
 	char buffer;
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]){
 	if(mkfifo(pid, 0666) == -1){
 		perror("Erro ao criar o pipe");
 	}
-	printf("Pipe com o pid %s aberto\n", pid);
+	//printf("Pipe com o pid %s aberto\n", pid);
 
 	if(argc == 1){
 		int size = snprintf(buffer, MAX_BUFF, "./sdstore status\n./sdstore proc-file <priority> input-filename output-filename transformation-id1 transformation-id2 ...\n");
