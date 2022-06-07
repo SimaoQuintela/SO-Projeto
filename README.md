@@ -26,3 +26,4 @@ Grupo formado por:
     </td>
   </tr>
 </table>
+<p>Classificação final: 14.6</p>
